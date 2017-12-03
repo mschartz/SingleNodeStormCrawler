@@ -76,7 +76,6 @@ public class URLSpout implements IRichSpout {
                 		master.setWorking(true);
                 		synchronized(urlQueue) {
 					List<URLInfo> urls= urlQueue.get(site);
-					System.out.println("Spout is on site:" + site);
 					Iterator<URLInfo> iter = urls.iterator();
 					while (iter.hasNext()) {
 					    URLInfo url = iter.next();
@@ -85,19 +84,17 @@ public class URLSpout implements IRichSpout {
 					    }
 						System.out.println(getExecutorId() + " emitting " + url);
 		    	        		this.collector.emit(new Values<Object>(url));
-		    	        		urls.remove(url);
+		    	        		//urls.remove(url);
 					}
 					
-					if(urls.isEmpty())
-						urlQueue.remove(site);
+					//if(urls.isEmpty())
+						//urlQueue.remove(site);
 					urlQueue.notifyAll();
                 		}
-                		//CrawlerFactory.getURLqueue().notifyAll();
 					master.setWorking(false);
 				}
                 siteQueue.notifyAll();
             	}
-            	//CrawlerFactory.getSiteQueue().notifyAll();
                } catch (InterruptedException ie) {
                 ie.printStackTrace();
                }
