@@ -2,11 +2,23 @@ package edu.upenn.cis.stormlite.bolt;
 
 import edu.upenn.cis.cis455.crawler.info.URLInfo;
 import edu.upenn.cis.cis455.crawler.CrawlMaster;
+import edu.upenn.cis.cis455.crawler.Crawler;
 import edu.upenn.cis.cis455.storage.StorageInterface;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.security.MessageDigest;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.UUID;
+
+import javax.net.ssl.HttpsURLConnection;
 
 import edu.upenn.cis.stormlite.OutputFieldsDeclarer;
 import edu.upenn.cis.stormlite.TopologyContext;
@@ -62,17 +74,18 @@ public class DocumentFetcherBolt implements IRichBolt{
         log.debug(getExecutorId() + " received URL: " + url.toString());
         try {
             if(url.getNextOperation().equals("Robot.txt")) {
-                master.readRobotsFile(url);
+                
+            	master.readRobotsFile(url);
             }
             
             // TODO: wait delay
             if(url.getNextOperation().equals("HEAD")) {
-                master.sendRequest(url);
+                sendRequest(url);
             }
             
             // TODO: wait delay
             if(url.getNextOperation().equals("GET")) {
-                master.sendRequest(url);
+                sendRequest(url);
             }
         }
         catch(Exception e) {
@@ -130,4 +143,245 @@ public class DocumentFetcherBolt implements IRichBolt{
 	public Fields getSchema() {
 		return schema;
 	}
+	
+	
+    /*
+     * Fetch file from the host specified in URLInfo
+     * If it's a head request, then we will need to check if the file that we have associated with the URL is in our corpus
+     * If it's in our corpus, we need to check if it has been modified since its timestamp
+     */
+    public void sendRequest(URLInfo info) throws Exception {
+        try {
+            // Get the date somewhere here
+            boolean doModifiedSince = false;
+            Long timeStamp = db.getDocumentTimeStamp(info.toString());
+            String dateStr = "";        
+            if((timeStamp != null) && info.getNextOperation().equals("HEAD")) {
+                doModifiedSince = true;
+                SimpleDateFormat date = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss z");
+                date.setTimeZone(TimeZone.getTimeZone("GMT"));
+                dateStr = date.format(new Date(timeStamp.longValue())); // TODO: check if this is correct
+            }
+            
+            BufferedReader is = null;
+            HttpURLConnection conn = null; // For Http
+            HttpsURLConnection connSec = null; // for Https
+            URL url = new URL(((info.isSecure())?"https://":"http://") + info.getHostName() + info.getFilePath());
+                
+                /******* SENDING REQUEST TO WEBSITE ****/
+                if(info.isSecure()) {
+                    
+                    connSec = (HttpsURLConnection)url.openConnection();
+                    connSec.setRequestMethod(info.getNextOperation());
+                    connSec.setRequestProperty("User-Agent", "cis455crawler");
+                    connSec.setRequestProperty("Host", info.getHostName());
+                    
+                    if(doModifiedSince)
+                        connSec.setRequestProperty("If-Modified-Since", dateStr);
+                    
+                    is = new BufferedReader(new InputStreamReader(connSec.getInputStream()));
+                }
+                else {
+                		conn = (HttpURLConnection)url.openConnection();
+                		conn.setRequestMethod(info.getNextOperation());
+                		conn.setRequestProperty("User-Agent", "cis455crawler");
+                		conn.setRequestProperty("Host", info.getHostName());
+                		
+                		if(doModifiedSince)
+                			conn.setRequestProperty("If-Modified-Since", dateStr);
+                    
+                    is = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                }
+                
+    
+                
+                /****** READING HEAD RESPONSE FROM WEBSITE ******/
+               
+               Integer responseCode = null;
+               String contentType = null;
+               Integer contentLength = null;
+               int docLength = -1;
+               
+               if(info.isSecure()) {
+                   responseCode = connSec.getResponseCode();
+                   for(Map.Entry<String, List<String>> header : connSec.getHeaderFields().entrySet()) {
+                       if(header.getKey() == null) {
+                           continue;
+                       }
+                       if(header.getKey().toLowerCase().equals("content-type")) {
+                           contentType = header.getValue().get(0);
+                       }
+                       else if(header.getKey().toLowerCase().equals("content-length")) {
+                           contentLength = Integer.parseInt(header.getValue().get(0).trim()) / 1000000;
+                           docLength = Integer.parseInt(header.getValue().get(0).trim());
+                       }
+                   }
+               }
+               else {
+            	   
+                   String firstLine = is.readLine();  // reading first line
+                   responseCode = Integer.parseInt(firstLine.split(" ")[1].trim());
+                   while((firstLine = is.readLine()) != null) {
+                       if(firstLine.equals("") || firstLine.equals(" ") || firstLine.equals("/r/n")) {
+                           break;
+                       }
+                       if(!firstLine.contains(":")) {
+                           continue;
+                       }
+                       String headerName = firstLine.split(":")[0];
+                       if(headerName == null) {
+                           continue;
+                       }
+
+                       String headerVal = firstLine.split(":")[1];
+                       
+                       if(headerName.toLowerCase().equals("content-type")) {
+                            contentType = headerVal;
+                       }
+                       else if(headerName.toLowerCase().equals("content-length")) {
+                           contentLength = Integer.parseInt(headerVal.trim()) / 1000000;
+                           docLength = Integer.parseInt(headerVal.trim());
+                       }
+                   }
+               }
+
+                
+               if(info.getNextOperation().equals("HEAD") && (responseCode == 200)) { // if it has been modified since
+                    
+                    // checking if file is acceptable
+                    if((!contentType.toLowerCase().contains("html") 
+                    		&& !contentType.toLowerCase().contains("xml")) 
+                    		|| (contentLength > ((Crawler) master).getMaxDocSize())) {
+                        info.setNextOperation("NULL");
+                    }
+                    else {
+                        info.setNextOperation("GET"); // we will get the file
+                    }
+                    
+                    if(contentType.toLowerCase().contains("html")) {
+                        info.isHTML(true);
+                    }
+                    if(info.isSecure()) {
+                        connSec.disconnect();
+                        is.close();
+                    }
+                    else {
+                        conn.disconnect();
+                        is.close();
+                    }
+                    return;
+               }
+               else if(info.getNextOperation().equals("HEAD") && (responseCode == 304)) { // if it has not been modified since
+                   info.setNextOperation("NULL"); // we won't traverse it again
+//                   logger.info("Not Modified " + info.toString());
+                   if(info.toString().contains("html") || info.toString().endsWith("/")) {
+                        info.isHTML(true);
+                    }
+                    
+                   if(info.isSecure()) {
+                        connSec.disconnect();
+                        is.close();
+                    }
+                    else {
+                        conn.disconnect();
+                        is.close();
+                    }
+                   return;
+               }
+               else if(info.getNextOperation().equals("HEAD")) { // if we got another error from the server
+                   System.out.println("ERROR in head request for " + info.toString() + " Response Code:" + responseCode.toString());
+                   if(info.isSecure()) {
+                        connSec.disconnect();
+                        is.close();
+                    }
+                    else {
+                        conn.disconnect();
+                        is.close();
+                    }
+                    System.exit(1);
+                   return;
+               }
+               
+               /****** READING GET RESPONSE FROM WEBSITE ******/
+               if(info.getNextOperation().equals("GET")) {
+              
+                   // check status
+                   if(responseCode != 200) {
+                       System.out.println("ERROR in GET request for " + info.toString() + " Response Code:" + responseCode.toString());
+                       info.setNextOperation("NULL");
+                       if(info.isSecure()) {
+                            connSec.disconnect();
+                            is.close();
+                        }
+                        else {
+                            conn.disconnect();
+                            is.close();
+                        }
+                        System.exit(1);
+                       return;
+                   }
+                   
+                   if(docLength == -1) {
+                       System.out.println("ERROR in GET request for " + info.toString() + " Response header does not include content-length header");
+                       info.setNextOperation("NULL");
+
+                       if(info.isSecure()) {
+                            connSec.disconnect();
+                            is.close();
+                        }
+                        else {
+                            conn.disconnect();
+                            is.close();
+                        }
+                        System.exit(1);
+                       return;
+                   }
+                    
+                    
+                   // Read body into a String
+                   char []rawBody = new char[docLength];
+                   is.read(rawBody, 0, docLength);
+                   String responseBody = new String(rawBody);
+                   
+                   // Computing MD5 hash of message
+                   MessageDigest md = MessageDigest.getInstance("MD5");
+                   String hexResponse = new String(md.digest(responseBody.getBytes("UTF-8")), "UTF-8");
+                   
+                   if(db.hasSeen(hexResponse)) {
+                       info.setNextOperation("SEEN");
+                       if(info.isSecure()) {
+                            connSec.disconnect();
+                            is.close();
+                        }
+                        else {
+                            conn.disconnect();
+                            is.close();
+                        }
+                       return;
+                   }
+                   
+                   // Add it to corpus
+//                   logger.info("Downloading " + info.toString());
+                   db.addDocument(info.toString(), responseBody);
+                   
+                   // Add hash of the document in db.contentSeen
+                   db.insertSeen(hexResponse);
+                   info.setNextOperation("NULL");
+               }
+               
+               if(info.isSecure()) {
+                    connSec.disconnect();
+                    is.close();
+                }
+                else {
+                    conn.disconnect();
+                    is.close();
+                }
+           }
+           catch(Exception e) {
+               throw e;
+           }
+
+        return;
+    }
 }
