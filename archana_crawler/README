@@ -1,0 +1,27 @@
+Full name:  Archana Nagabhushana Rao
+SEAS login: archanan
+
+Which features did you implement? 
+  (list features, or write 'Entire assignment')
+
+Did you complete any extra-credit tasks? If so, which ones?
+  (list extra-credit tasks)
+
+Any special instructions for building and running your solution?
+  Crawler.java ->runs crawler
+  WebInterface.java -> runs the webInterface
+  XPathEngineImpl not submitted as singleton class, since I use each instance of the XPathEngineImple for only 1 docId.
+  In case of "ClassCastException", the db needs to be deleted or specifically, ChannelMap binding needs to be deleted and the exception goes away.
+
+Did you personally write _all_ the code you are submitting
+(other than code from the course web page)?
+  [x] Yes
+  [ ] No
+
+Did you copy any code from the Internet, or from classmates?
+  [ ] Yes
+  [x] No
+
+Did you collaborate with anyone on this assignment?
+  [ ] Yes
+  [x] No
