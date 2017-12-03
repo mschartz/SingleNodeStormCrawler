@@ -83,8 +83,6 @@ public class URLSpout implements IRichSpout {
 						    		while(master.deferCrawl(url.getHostName())) {} // busy wait
 			    	        			this.collector.emit(new Values<Object>(url));
 						    }
-						    else
-						    		System.out.println("Forbidden:" +url.toString());
 						}
 						
 						urlQueue.remove(site);

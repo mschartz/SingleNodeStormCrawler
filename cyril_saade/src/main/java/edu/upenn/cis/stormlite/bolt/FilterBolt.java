@@ -62,25 +62,32 @@ public class FilterBolt implements IRichBolt{
     public void execute(Tuple input) {
         try {
 
-        	URLInfo newURL = (URLInfo) input.getObjectByField("URL");
+        		URLInfo newURL = (URLInfo) input.getObjectByField("URL");
             log.debug(getExecutorId() + " New URL: " + newURL.toString());
             
             	synchronized(urlQueue) {
 	           if(urlQueue.get(newURL.getHostName()) == null || (urlQueue.get(newURL.getHostName()).isEmpty()))
 	        	   		urlQueue.put(newURL.getHostName(), new ArrayList<URLInfo>());
 	           List<URLInfo> newUrls = urlQueue.get(newURL.getHostName());
-	           if(!newUrls.contains(newURL))
+	           
+	           // checking if url exists if url list
+	           boolean exists = false;
+	           for(int i=0; i<newUrls.size(); i++) {
+	        	   		if(newUrls.get(i).toString().equals(newURL.toString())) {
+	        	   			exists = true;
+	        	   			break;
+	        	   		}
+	           }
+	           
+	           if(!exists && !newUrls.contains(newURL))
 	        	   		newUrls.add(new URLInfo(newURL.toString()));
 	           urlQueue.put(newURL.getHostName(), newUrls);
+	           
 	           if(!siteQueue.contains(newURL.getHostName()))
 	        	   		siteQueue.put(new String(newURL.getHostName()));
+	           
 	           urlQueue.notifyAll();
             }
-
-            //for(int i=0; i< newUrls.size(); i++) {
-            //    log.debug(getExecutorId() + " New URL: " + newUrls.get(i).toString());
-            //    siteQueue.put(newUrls.get(i));
-            //}
         }
         catch(Exception e) {
             e.printStackTrace();

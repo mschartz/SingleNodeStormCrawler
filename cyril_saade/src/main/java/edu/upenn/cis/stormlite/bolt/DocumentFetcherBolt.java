@@ -96,7 +96,6 @@ public class DocumentFetcherBolt implements IRichBolt{
 
         if(url.getNextOperation().equals("NULL")) { // indexed the document
             master.incCount();
-            //collector.emit(new Values<Object>(db.getDocument(url.toString())));
             collector.emit(new Values<Object>(url, db.getDocument(url.toString())));
         }
         //master.setWorking(false);

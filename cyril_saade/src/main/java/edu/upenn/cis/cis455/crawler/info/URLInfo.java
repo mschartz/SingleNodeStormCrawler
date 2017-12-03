@@ -13,7 +13,7 @@ public class URLInfo {
 	/**
 	 * Constructor called with raw URL as input - parses URL to obtain host name and file path
 	 */
-	public URLInfo(String docURL){
+	public URLInfo(String docURL) {
 	    
 		if(docURL == null || docURL.equals(""))
 			return;
