@@ -74,7 +74,7 @@ public class Crawler implements CrawlMaster {
     int busy = 0;
     
     Map<String, RobotsTxtInfo> robots = new HashMap<>();
-    List<CrawlWorker> workers = new ArrayList<>();
+    //List<CrawlWorker> workers = new ArrayList<>();
     
     BlockingQueue<String> siteQueue = new LinkedBlockingQueue<>();
     Map<String,List<URLInfo>> urlQueue = new ConcurrentHashMap<String, List<URLInfo>>();
@@ -141,7 +141,7 @@ public class Crawler implements CrawlMaster {
         // Read the Robots.txt file, and save it
         if (!robots.containsKey(info.getHostName())) { // if we don't have robots.txt
             try {
-                
+                System.out.println("Reading robots file "+ info.toString());
                 if(!readRobotsFile(info)) {
                     System.out.println("Cannot read robots.txt file"); //TODO
                 }
@@ -198,8 +198,9 @@ public class Crawler implements CrawlMaster {
 
     @Override
     public void incCount() {
-        System.out.print(".");
+        //System.out.print(".");
         crawled++;
+        System.out.println("Num indexed:" + crawled);
     }
 
     @Override
@@ -221,13 +222,13 @@ public class Crawler implements CrawlMaster {
      * Busy wait for shutdown
      */
     public void waitForThreadsToEnd() {
-        while (shutdown < workers.size()) {
+       /* while (shutdown < workers.size()) {
             try {
                 Thread.sleep(10);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        }
+        }*/
         System.out.println("Indexed:" + crawled + " documents");
         logger.info("Indexed:" + crawled + " documents");
         System.out.println("Threads are all shut down");
@@ -655,9 +656,9 @@ public class Crawler implements CrawlMaster {
         builder.setSpout(URL_SPOUT, urlSpout, 1);
         
         // Four parallel word counters, each of which gets specific words
-        builder.setBolt(FETCHER_BOLT, documentFetcher, 1).fieldsGrouping(URL_SPOUT, new Fields("URL"));
-        builder.setBolt(EXTRACTOR_BOLT, linkExtractor, 1).shuffleGrouping(FETCHER_BOLT);
-        builder.setBolt(FILTER_BOLT, filterBolt, 1).shuffleGrouping(EXTRACTOR_BOLT);
+        builder.setBolt(FETCHER_BOLT, documentFetcher, 5).shuffleGrouping(URL_SPOUT);//, new Fields("URL")); (fieldGrouping)
+        builder.setBolt(EXTRACTOR_BOLT, linkExtractor, 5).shuffleGrouping(FETCHER_BOLT);
+        builder.setBolt(FILTER_BOLT, filterBolt, 5).shuffleGrouping(EXTRACTOR_BOLT);
         
         // A single printer bolt (and officially we round-robin)
         //builder.setBolt(PRINT_BOLT, printer, 4).shuffleGrouping(COUNT_BOLT);

@@ -20,7 +20,7 @@ public interface CrawlMaster {
      */
     public boolean isOKtoParse(URLInfo url);
     
-    public void sendRequest(URLInfo url) throws Exception;
+    //public void sendRequest(URLInfo url) throws Exception;
     public boolean readRobotsFile(URLInfo info) throws Exception;
     
     /**

@@ -69,32 +69,29 @@ public class URLSpout implements IRichSpout {
 	public void nextTuple() {
 	    do {
             try {
-            	synchronized(siteQueue) {
+            	
                 String site = siteQueue.take();
                 
                 if((site != null) && (!urlQueue.isEmpty()) && (urlQueue.containsKey(site))) {
                 		master.setWorking(true);
                 		synchronized(urlQueue) {
-					List<URLInfo> urls= urlQueue.get(site);
-					Iterator<URLInfo> iter = urls.iterator();
-					while (iter.hasNext()) {
-					    URLInfo url = iter.next();
-					    if(master.isOKtoCrawl(url)) {
-					    		while(master.deferCrawl(url.getHostName())) {} // busy wait
-					    }
-						System.out.println(getExecutorId() + " emitting " + url);
-		    	        		this.collector.emit(new Values<Object>(url));
-		    	        		//urls.remove(url);
-					}
-					
-					//if(urls.isEmpty())
-						//urlQueue.remove(site);
-					urlQueue.notifyAll();
+						List<URLInfo> urls= urlQueue.get(site);
+						Iterator<URLInfo> iter = urls.iterator();
+						while (iter.hasNext()) {
+						    URLInfo url = iter.next();
+						    if(master.isOKtoCrawl(url)) {
+						    		while(master.deferCrawl(url.getHostName())) {} // busy wait
+			    	        			this.collector.emit(new Values<Object>(url));
+						    }
+						    else
+						    		System.out.println("Forbidden:" +url.toString());
+						}
+						
+						urlQueue.remove(site);
+						urlQueue.notifyAll();
                 		}
 					master.setWorking(false);
 				}
-                siteQueue.notifyAll();
-            	}
                } catch (InterruptedException ie) {
                 ie.printStackTrace();
                }

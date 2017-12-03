@@ -61,18 +61,18 @@ public class FilterBolt implements IRichBolt{
     @Override
     public void execute(Tuple input) {
         try {
-            //List<URLInfo> newUrls = (List<URLInfo>) input.getObjectByField("URL");
-            URLInfo newURL = (URLInfo) input.getObjectByField("URL");
+
+        	URLInfo newURL = (URLInfo) input.getObjectByField("URL");
             log.debug(getExecutorId() + " New URL: " + newURL.toString());
-            synchronized(siteQueue) {
+            
             	synchronized(urlQueue) {
-           if(urlQueue.get(newURL.getHostName()) == null)
-        	   		urlQueue.put(newURL.getHostName(), new ArrayList<URLInfo>());
-           urlQueue.get(newURL.getHostName()).add(new URLInfo(newURL.toString()));
-           siteQueue.put(new String(newURL.getHostName()));
-           urlQueue.notifyAll();
-            }
-            	siteQueue.notifyAll();
+	           if(urlQueue.get(newURL.getHostName()) == null || (urlQueue.get(newURL.getHostName()).isEmpty()))
+	        	   		urlQueue.put(newURL.getHostName(), new ArrayList<URLInfo>());
+	           List<URLInfo> newUrls = urlQueue.get(newURL.getHostName());
+	           newUrls.add(new URLInfo(newURL.toString()));
+	           urlQueue.put(newURL.getHostName(), newUrls);
+	           siteQueue.put(new String(newURL.getHostName()));
+	           urlQueue.notifyAll();
             }
 
             //for(int i=0; i< newUrls.size(); i++) {
