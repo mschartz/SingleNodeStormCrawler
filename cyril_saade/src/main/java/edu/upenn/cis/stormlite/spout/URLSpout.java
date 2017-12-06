@@ -27,83 +27,84 @@ import edu.upenn.cis.stormlite.CrawlerFactory;
  * Spout that will send URL to its output stream once at a time from its queue
  */
 public class URLSpout implements IRichSpout {
-    static Logger log = LogManager.getLogger(URLSpout.class);
-    
-    String executorId = UUID.randomUUID().toString();
+	static Logger log = LogManager.getLogger(URLSpout.class);
 
-    /**
+	String executorId = UUID.randomUUID().toString();
+
+	/**
 	 * The collector is the destination for tuples; you "emit" tuples there
 	 */
 	SpoutOutputCollector collector;
-	
+
 	BlockingQueue<String> siteQueue;
 	Map<String, List<URLInfo>> urlQueue;
-    final CrawlMaster master;
-    final StorageInterface db;
-    
-    public URLSpout() {
-        this.siteQueue = CrawlerFactory.getSiteQueue();
-        this.urlQueue = CrawlerFactory.getURLqueue();
-        this.db = CrawlerFactory.getDatabaseInstance();
-        this.master = CrawlerFactory.getCrawlMasterInstance();
-    }
-    
+	final CrawlMaster master;
+	final StorageInterface db;
+
+	public URLSpout() {
+		this.siteQueue = CrawlerFactory.getSiteQueue();
+		this.urlQueue = CrawlerFactory.getURLqueue();
+		this.db = CrawlerFactory.getDatabaseInstance();
+		this.master = CrawlerFactory.getCrawlMasterInstance();
+	}
+
 
 	@SuppressWarnings("rawtypes")
-    @Override
-    public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
-        this.collector = collector;
-        log.debug(getExecutorId() + " opening URL reader");
-    }
+	@Override
+	public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
+		this.collector = collector;
+		log.debug(getExecutorId() + " opening URL reader");
+	}
 
 
 	public void close() {
-	    return;
+		return;
 	}
-	
+
 	/**
 	 * When this method is called, Storm is requesting that the Spout emit 
 	 * tuples to the output collector. This method should be non-blocking, 
 	 * so if the Spout has no tuples to emit, this method should return. 
 	 */
 	public void nextTuple() {
-	    do {
-            try {
-            	
-                String site = siteQueue.take();
-                
-                if((site != null) && (!urlQueue.isEmpty()) && (urlQueue.containsKey(site))) {
-                		master.setWorking(true);
-                		synchronized(urlQueue) {
+		do {
+			try {
+
+				String site = siteQueue.take();
+				synchronized(urlQueue) {
+					if((site != null) && (!urlQueue.isEmpty()) && (urlQueue.containsKey(site))) {
+						master.setWorking(true);
+
 						List<URLInfo> urls= urlQueue.get(site);
 						Iterator<URLInfo> iter = urls.iterator();
 						while (iter.hasNext()) {
-						    URLInfo url = iter.next();
-						    if(master.isOKtoCrawl(url)) {
-						    		while(master.deferCrawl(url.getHostName())) {} // busy wait
-			    	        			this.collector.emit(new Values<Object>(url));
-						    }
-						    else
-						    		System.out.println("Forbidden:" +url.toString());
+							URLInfo url = iter.next();
+							if(master.isOKtoCrawl(url)) {
+								while(master.deferCrawl(url.getHostName())) {} // busy wait
+								this.collector.emit(new Values<Object>(url));
+							}
+							else
+								System.out.println("Forbidden:" +url.toString());
 						}
-						
-						urlQueue.remove(site);
-						urlQueue.notifyAll();
-                		}
-					master.setWorking(false);
+
+
+						master.setWorking(false);
+					}
+					urlQueue.remove(site);
+					urlQueue.notifyAll();
 				}
-               } catch (InterruptedException ie) {
-                ie.printStackTrace();
-               }
-        } while (!master.isDone());
-        
-        master.notifyThreadExited();
+			} catch (InterruptedException ie) {
+				ie.printStackTrace();
+			}
+		} while (!master.isDone());
+
+		master.notifyThreadExited();
 	}
 
 	@Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("URL"));
-    }
+	public void declareOutputFields(OutputFieldsDeclarer declarer) {
+		declarer.declare(new Fields("URL"));
+	}
 
 
 	@Override

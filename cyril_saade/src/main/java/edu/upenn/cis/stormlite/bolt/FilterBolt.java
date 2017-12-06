@@ -27,87 +27,87 @@ import edu.upenn.cis.stormlite.CrawlerFactory;
  * Bolt that will read an ArrayList of URLs and push that to the site queue
  */
 public class FilterBolt implements IRichBolt{
-    
-    static Logger log = LogManager.getLogger(FilterBolt.class);
-	
+
+	static Logger log = LogManager.getLogger(FilterBolt.class);
+
 	//Fields schema = new Fields("URL", "Filter");
 	Fields schema = null;
-    String executorId = UUID.randomUUID().toString();
-    BlockingQueue<String> siteQueue;
-    Map<String, List<URLInfo>> urlQueue;
-    
-    private OutputCollector collector;
-    private CrawlMaster master;
-    
-    public FilterBolt() {
-        this.siteQueue = CrawlerFactory.getSiteQueue();
-        this.urlQueue = CrawlerFactory.getURLqueue();
-        this.master = CrawlerFactory.getCrawlMasterInstance();
-    }
-    
-    /**
-     * Initialization, just saves the output stream destination
-     */
-    @Override
-    public void prepare(Map<String,String> stormConf, 
-    		TopologyContext context, OutputCollector collector) {
-        this.collector = collector;
-    }
+	String executorId = UUID.randomUUID().toString();
+	BlockingQueue<String> siteQueue;
+	Map<String, List<URLInfo>> urlQueue;
 
-    /**
-     * Process a tuple received from the stream, incrementing our
-     * counter and outputting a result
-     */
-    @Override
-    public void execute(Tuple input) {
-        try {
+	private OutputCollector collector;
+	private CrawlMaster master;
 
-        	URLInfo newURL = (URLInfo) input.getObjectByField("URL");
-            log.debug(getExecutorId() + " New URL: " + newURL.toString());
-            
-            	synchronized(urlQueue) {
-	           if(urlQueue.get(newURL.getHostName()) == null || (urlQueue.get(newURL.getHostName()).isEmpty()))
-	        	   		urlQueue.put(newURL.getHostName(), new ArrayList<URLInfo>());
-	           List<URLInfo> newUrls = urlQueue.get(newURL.getHostName());
-	           if(!newUrls.contains(newURL))
-	        	   		newUrls.add(new URLInfo(newURL.toString()));
-	           urlQueue.put(newURL.getHostName(), newUrls);
-	           if(!siteQueue.contains(newURL.getHostName()))
-	        	   		siteQueue.put(new String(newURL.getHostName()));
-	           urlQueue.notifyAll();
-            }
+	public FilterBolt() {
+		this.siteQueue = CrawlerFactory.getSiteQueue();
+		this.urlQueue = CrawlerFactory.getURLqueue();
+		this.master = CrawlerFactory.getCrawlMasterInstance();
+	}
 
-            //for(int i=0; i< newUrls.size(); i++) {
-            //    log.debug(getExecutorId() + " New URL: " + newUrls.get(i).toString());
-            //    siteQueue.put(newUrls.get(i));
-            //}
-        }
-        catch(Exception e) {
-            e.printStackTrace();
-        }
-    }
+	/**
+	 * Initialization, just saves the output stream destination
+	 */
+	@Override
+	public void prepare(Map<String,String> stormConf, 
+			TopologyContext context, OutputCollector collector) {
+		this.collector = collector;
+	}
 
-    /**
-     * Shutdown, just frees memory
-     */
-    @Override
-    public void cleanup() {
-    	//System.out.println("WordCount executor " + getExecutorId() + " has words: " + wordCounter.keySet());
+	/**
+	 * Process a tuple received from the stream, incrementing our
+	 * counter and outputting a result
+	 */
+	@Override
+	public void execute(Tuple input) {
+		try {
 
-    	//wordCounter.clear();
-    }
+			URLInfo newURL = (URLInfo) input.getObjectByField("URL");
+			log.debug(getExecutorId() + " New URL: " + newURL.toString());
 
-    /**
-     * Lets the downstream operators know our schema
-     */
-    @Override
-    public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(schema);
-    }
+			synchronized(urlQueue) {
+				if(urlQueue.get(newURL.getHostName()) == null || (urlQueue.get(newURL.getHostName()).isEmpty()))
+					urlQueue.put(newURL.getHostName(), new ArrayList<URLInfo>());
+				List<URLInfo> newUrls = urlQueue.get(newURL.getHostName());
+				if(!newUrls.contains(newURL))
+					newUrls.add(new URLInfo(newURL.toString()));
+				urlQueue.put(newURL.getHostName(), newUrls);
+				if(!siteQueue.contains(newURL.getHostName()))
+					siteQueue.put(new String(newURL.getHostName()));
+				urlQueue.notifyAll();
+			}
 
-    /**
-     * Used for debug purposes, shows our exeuctor/operator's unique ID
-     */
+			//for(int i=0; i< newUrls.size(); i++) {
+				//    log.debug(getExecutorId() + " New URL: " + newUrls.get(i).toString());
+			//    siteQueue.put(newUrls.get(i));
+			//}
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Shutdown, just frees memory
+	 */
+	@Override
+	public void cleanup() {
+		//System.out.println("WordCount executor " + getExecutorId() + " has words: " + wordCounter.keySet());
+
+		//wordCounter.clear();
+	}
+
+	/**
+	 * Lets the downstream operators know our schema
+	 */
+	@Override
+	public void declareOutputFields(OutputFieldsDeclarer declarer) {
+		declarer.declare(schema);
+	}
+
+	/**
+	 * Used for debug purposes, shows our exeuctor/operator's unique ID
+	 */
 	@Override
 	public String getExecutorId() {
 		return executorId;

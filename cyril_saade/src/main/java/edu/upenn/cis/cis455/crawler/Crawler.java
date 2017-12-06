@@ -138,8 +138,19 @@ public class Crawler implements CrawlMaster {
     @Override
     public boolean isOKtoCrawl(URLInfo info) {
         
+    	boolean haveRobots = false;
         // Read the Robots.txt file, and save it
-        if (!robots.containsKey(info.getHostName())) { // if we don't have robots.txt
+        synchronized(robots) {
+        	if (!robots.containsKey(info.getHostName()))
+			{
+        		haveRobots = false;
+			}
+        	else
+        		haveRobots = true;
+        	robots.notifyAll();
+        }
+    	if (!haveRobots)
+        { // if we don't have robots.txt
             try {
                 System.out.println("Reading robots file "+ info.toString());
                 if(!readRobotsFile(info)) {
@@ -150,31 +161,37 @@ public class Crawler implements CrawlMaster {
                 e.printStackTrace();
             }
             info.setNextOperation("Robot.txt");
-            return true;
+//            return true;
         }
 
         // checks if it is ok to crawl based on directives inside robots.txt
         String []paths = info.getFilePath().split("/");
         String currPath = "";
-        RobotsTxtInfo robFile = robots.get(info.getHostName());
+        RobotsTxtInfo robFile;
+        synchronized(robots) {
+        	robFile = robots.get(info.getHostName());
+	        robots.notifyAll();
+        }
         
         for(int i=1; i<paths.length; i++) {
             boolean forbidden = false;
             currPath += "/" + paths[i];
             // checks for /path
-            if(robFile.getDisallowedLinks("*") != null) {
-                if(robFile.getDisallowedLinks("*").contains(currPath))
-                    forbidden = true;
-                if(robFile.getDisallowedLinks("*").contains(currPath + "/"))
-                    forbidden = true;
-            }
-            
             if(robFile.getDisallowedLinks("cis455crawler") != null) {
                 if(robFile.getDisallowedLinks("cis455crawler").contains(currPath))
                     forbidden = true;
                 if(robFile.getDisallowedLinks("cis455crawler").contains(currPath + "/"))
                     forbidden = true;
             }
+            if (forbidden == false) {
+	            if(robFile.getDisallowedLinks("*") != null) {
+	                if(robFile.getDisallowedLinks("*").contains(currPath))
+	                    forbidden = true;
+	                if(robFile.getDisallowedLinks("*").contains(currPath + "/"))
+	                    forbidden = true;
+	            }
+            }
+            
             
             if(forbidden) {
                 info.setNextOperation("NULL");
@@ -200,7 +217,7 @@ public class Crawler implements CrawlMaster {
     public void incCount() {
         //System.out.print(".");
         crawled++;
-        System.out.println("Num indexed:" + crawled);
+//        System.out.println("Num indexed:" + crawled);
     }
 
     @Override

@@ -72,7 +72,7 @@ public class DocumentFetcherBolt implements IRichBolt{
         //master.setWorking(true);
         URLInfo url = (URLInfo) input.getObjectByField("URL");
         log.debug(getExecutorId() + " received URL: " + url.toString());
-        System.out.println("Indexing:" + url.toString());
+//        System.out.println("Indexing:" + url.toString());
         try {
             if(url.getNextOperation().equals("Robot.txt")) {
                 
@@ -86,6 +86,7 @@ public class DocumentFetcherBolt implements IRichBolt{
             
             // TODO: wait delay
             if(url.getNextOperation().equals("GET")) {
+            	System.out.println("=================== Sending GET ==============");
                 sendRequest(url);
             }
         }
@@ -163,6 +164,8 @@ public class DocumentFetcherBolt implements IRichBolt{
                 date.setTimeZone(TimeZone.getTimeZone("GMT"));
                 dateStr = date.format(new Date(timeStamp.longValue())); // TODO: check if this is correct
             }
+            else
+            	doModifiedSince = false;
             
             BufferedReader is = null;
             HttpURLConnection conn = null; // For Http
@@ -173,6 +176,7 @@ public class DocumentFetcherBolt implements IRichBolt{
                 if(info.isSecure()) {
                     
                     connSec = (HttpsURLConnection)url.openConnection();
+                    System.out.println("Connection Type: "+info.getNextOperation());
                     connSec.setRequestMethod(info.getNextOperation());
                     connSec.setRequestProperty("User-Agent", "cis455crawler");
                     connSec.setRequestProperty("Host", info.getHostName());
@@ -184,6 +188,7 @@ public class DocumentFetcherBolt implements IRichBolt{
                 }
                 else {
                 		conn = (HttpURLConnection)url.openConnection();
+                		System.out.println("Connection Type: "+info.getNextOperation());
                 		conn.setRequestMethod(info.getNextOperation());
                 		conn.setRequestProperty("User-Agent", "cis455crawler");
                 		conn.setRequestProperty("Host", info.getHostName());
@@ -270,6 +275,7 @@ public class DocumentFetcherBolt implements IRichBolt{
                         conn.disconnect();
                         is.close();
                     }
+                    info.setNextOperation("GET");
                     return;
                }
                else if(info.getNextOperation().equals("HEAD") && (responseCode == 304)) { // if it has not been modified since
@@ -287,6 +293,7 @@ public class DocumentFetcherBolt implements IRichBolt{
                         conn.disconnect();
                         is.close();
                     }
+//                   info.setNextOperation("GET");
                    return;
                }
                else if(info.getNextOperation().equals("HEAD")) { // if we got another error from the server
@@ -303,9 +310,31 @@ public class DocumentFetcherBolt implements IRichBolt{
                    return;
                }
                
+//               /****** SENDING GET RESPONSE FROM WEBSITE ******/
+//               
+//               if(info.isSecure()) {
+//                   
+//                   connSec = (HttpsURLConnection)url.openConnection();
+//                   System.out.println("Connection Type: "+info.getNextOperation());
+//                   connSec.setRequestMethod(info.getNextOperation());
+//                   connSec.setRequestProperty("User-Agent", "cis455crawler");
+//                   connSec.setRequestProperty("Host", info.getHostName());
+//                   
+//                   is = new BufferedReader(new InputStreamReader(connSec.getInputStream()));
+//               }
+//               else {
+//               		conn = (HttpURLConnection)url.openConnection();
+//               		System.out.println("Connection Type: "+info.getNextOperation());
+//               		conn.setRequestMethod(info.getNextOperation());
+//               		conn.setRequestProperty("User-Agent", "cis455crawler");
+//               		conn.setRequestProperty("Host", info.getHostName());
+//               		
+//                   is = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+//               }
+               
                /****** READING GET RESPONSE FROM WEBSITE ******/
                if(info.getNextOperation().equals("GET")) {
-              
+            	   System.out.println("Connection Type: "+info.getNextOperation());
                    // check status
                    if(responseCode != 200) {
                        System.out.println("ERROR in GET request for " + info.toString() + " Response Code:" + responseCode.toString());
@@ -363,6 +392,7 @@ public class DocumentFetcherBolt implements IRichBolt{
                    
                    // Add it to corpus
 //                   logger.info("Downloading " + info.toString());
+//                   System.out.println("File Stored: "+ responseBody);
                    db.addDocument(info.toString(), responseBody);
                    
                    // Add hash of the document in db.contentSeen
