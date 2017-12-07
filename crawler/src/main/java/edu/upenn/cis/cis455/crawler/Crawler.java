@@ -1,11 +1,16 @@
 package edu.upenn.cis.cis455.crawler;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -38,7 +43,7 @@ public class Crawler implements CrawlMaster {
     List<CrawlWorker> workers = new ArrayList<>();
 
     BlockingQueue<String> siteQueue = new LinkedBlockingQueue<>();
-    Map<String,List<String>> urlQueue = new HashMap<>();
+    Map<String,List<String>> urlQueue = new ConcurrentHashMap<>();
 
     private Set<String> contentSeen = Collections.synchronizedSet(new HashSet<String>());
     private Set<String> urlSeen = new HashSet<String>();
@@ -55,13 +60,18 @@ public class Crawler implements CrawlMaster {
         return this.urlSeen;
     }
     // Last-crawled info for delays
-    Map<String,Integer> lastCrawled = new HashMap<>();
+    Map<String,Long> lastCrawled = new HashMap<>();
     
     public Crawler(String startUrl, StorageInterface db, int size, int count) {
         this.startUrl = startUrl;
         this.db = db;
         this.size = size;
         this.count = count;
+        
+        CrawlerFactory.setCrawlMasterInstance(this);
+        CrawlerFactory.setDatabaseInstance(db);
+        CrawlerFactory.setSiteQueue(siteQueue);
+        CrawlerFactory.setURLQueue(urlQueue);
     }
     
     public void start() {
@@ -91,37 +101,50 @@ public class Crawler implements CrawlMaster {
     }
     
     @Override
-    public boolean isOKtoCrawl(String site, int port, boolean isSecure) {
-        if (!robots.containsKey(site)) {
+    public boolean isOKtoCrawl(String url) {
+        URLInfo info = new URLInfo(url);
+        String site = info.getHostName();
+    		if (!robots.containsKey(site)) {
             try {
-                System.out.println("Site: " + site);
-                URL url = new URL(isSecure ? "https://" : "http://" + site + ":" + port+ "/robots.txt");
-
-                if (isSecure) {
-                    HttpsURLConnection conn = (HttpsURLConnection)url.openConnection();
-                    conn.disconnect();
-                } else {
-                    HttpURLConnection conn = (HttpURLConnection)url.openConnection();
-                    conn.disconnect();
-                }
-
-                RobotsTxtInfo robot = new RobotsTxtInfo();
-
-                if (robots.get(startUrl) == null) {
-                    robot = getRobotsInfoForSite();
-                }
-
-                robots.put(site, robot);
-
+            		if(!readRobotsFile(url)) {
+            			System.out.println("Cannot read robots file for " + url);
+            		}
             } catch (Exception e) {
                 e.printStackTrace();
             }
 
         }
-        return robots.get(site) == null || (robots.get(site).getDisallowedLinks("*") == null ||
-            !robots.get(site).getDisallowedLinks("*").contains("/")) ||
-            (robots.get(site).getDisallowedLinks("cis455crawler") == null ||
-            !robots.get(site).getDisallowedLinks("cis455crawler").contains("/"));
+    		 // checks if it is ok to crawl based on directives inside robots.txt
+        String []paths = info.getFilePath().split("/");
+        String currPath = "";
+        RobotsTxtInfo robFile;
+        	robFile = robots.get(site);
+        
+        for(int i=1; i<paths.length; i++) {
+            boolean forbidden = false;
+            currPath += "/" + paths[i];
+            // checks for /path
+            if(robFile.getDisallowedLinks("cis455crawler") != null) {
+                if(robFile.getDisallowedLinks("cis455crawler").contains(currPath))
+                    forbidden = true;
+                if(robFile.getDisallowedLinks("cis455crawler").contains(currPath + "/"))
+                    forbidden = true;
+            }
+            if (forbidden == false) {
+	            if(robFile.getDisallowedLinks("*") != null) {
+	                if(robFile.getDisallowedLinks("*").contains(currPath))
+	                    forbidden = true;
+	                if(robFile.getDisallowedLinks("*").contains(currPath + "/"))
+	                    forbidden = true;
+	            }
+            }
+            
+            if(forbidden) {
+                return false;
+            }
+        }
+        
+        return true;
     }
 
     public String getRedirectLink(String response) {
@@ -138,80 +161,98 @@ public class Crawler implements CrawlMaster {
         }
         return newLocation;
     }
+    
+    /*
+     * Helper function to get the robots.txt file from a website
+     * Submits a GET /robots.txt to the website
+     * Parses the body (i.e. the file) and saves it into a map
+     */
+    public boolean readRobotsFile(String url) throws Exception{
+    		URLInfo info = new URLInfo(url);
+        // Submit GET Req to site to get the Robots.txt file
+        try {
 
-    public RobotsTxtInfo getRobotsInfoForSite() {
-        RobotsTxtInfo info;
-        HttpClient client = new HttpClient();
-        URLInfo urlInfo = new URLInfo(startUrl + "/robots.txt");
+            BufferedReader is;
+            HttpsURLConnection connSec = null; // for Https
+            HttpURLConnection conn = null; // for Http
+            URL urlFetch = new URL(((info.isSecure())?"https://":"http://") + info.getHostName() + "/robots.txt"); // for Https
 
+            logger.info("Downloading " + url.toString());
+            
+            if(info.isSecure()) {
+                
+                connSec = (HttpsURLConnection)urlFetch.openConnection();
+                
+                connSec.setRequestMethod("GET");
+                connSec.setRequestProperty("User-Agent", "cis455Crawler");
+                connSec.setRequestProperty("Host", info.getHostName());
+                
+                is = new BufferedReader(new InputStreamReader(connSec.getInputStream()));
+            }
+            else {
+            		conn = (HttpURLConnection)urlFetch.openConnection();
+            		conn.setRequestMethod("GET");
+            		conn.setRequestProperty("User-Agent", "cis455Crawler");
+            		conn.setRequestProperty("Host", info.getHostName());
+            		
+                is = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            }
+            
+            String currLine;
+            if(!info.isSecure()) {
+                while((currLine = is.readLine()) != null) {
+                    if(currLine.equals("")) { // header is done
+                        break;
+                    }
+                }
+            }
 
-        String responseText = client.sendRequest(urlInfo, "GET");
+            //////// Parsing Robots.txt file /////////
+            RobotsTxtInfo newRob = new RobotsTxtInfo();
+            String userAgent = "";
+            while((currLine = is.readLine()) != null) {
 
-        // only handling 1-level redirection
-        // TODO: should implement in more general way
-
-        if (responseText.toLowerCase().startsWith("http/1.1 30")) {
-
-            String newLocation = getRedirectLink(responseText);
-
-            HttpClient redirectClient = new HttpClient();
-            URLInfo redirectUrlInfo = new URLInfo(newLocation);
-
-            String redirectResponseText = redirectClient.sendRequest(redirectUrlInfo, "GET");
-
-            info = parseRobotsFile(redirectResponseText);
-        }
-        // Not a redirect
-        else {
-            // parse robots.txt response as usual
-            info = parseRobotsFile(responseText);
-        }
-
-        // TODO: WHAT ABOUT 404s?
-
-        return info;
-    }
-
-    public RobotsTxtInfo parseRobotsFile(String response)
-    {
-        RobotsTxtInfo robots = new RobotsTxtInfo();
-        StringBuilder rulesBuilder;
-        String currentUA = "";
-
-        for (String line : response.split("\r\n")) {
-            String lower = line.toLowerCase();
-            //logger.debug("LINE: " + line + "|" + (lower.contains("cis455crawler")));
-            try {
-                if (lower.startsWith("user-agent:")) {
-                    currentUA = line.split(" ")[1].trim();
-    //                logger.debug("CURRENT USER-AGENT: " + currentUA);
-                    robots.addUserAgent(currentUA);
+                if(currLine.trim().startsWith("#")) {
                     continue;
                 }
 
-                // DISALLOW
-                if (lower.startsWith("disallow:")) {
-                    robots.addDisallowedLink(currentUA, line.split(" ")[1].trim());
+                if(currLine.equals("") || currLine.equals(" ")) {
+                    userAgent = "";
+                    continue;
                 }
-                // CRAWL-DELAY
-                if (lower.startsWith("crawl-delay:")) {
-                    robots.addCrawlDelay(currentUA, Integer.parseInt(line.split(" ")[1].trim()));
+                
+                String header = currLine.split(":")[0];
+                String val = currLine.split(":")[1];
+                
+                if(header.toLowerCase().equals("disallow")) {
+                    newRob.addDisallowedLink(userAgent, val.trim());
                 }
-                // ALLOW
-                if (lower.startsWith("allow:")) {
-                    robots.addAllowedLink(currentUA, line.split(" ")[1].trim());
+                else if(header.toLowerCase().equals("user-agent")) {
+                    userAgent = val.trim();
                 }
-                // SITEMAP
-                if (lower.startsWith("sitemap:")) {
-                    robots.addSitemapLink(line.split(" ")[1].trim());
+                else if(header.toLowerCase().equals("crawl-delay")) {
+                    newRob.addCrawlDelay(userAgent, Integer.parseInt(val.trim()));
                 }
-
             }
-            catch(Exception e) {
-                logger.debug("PARSER ERROR WHILE WORKING ON ROBOTS FILE: " + e);
+            // adding RobotsTxt to map
+            	this.robots.put(info.getHostName(), newRob);
+            	robots.notifyAll();
+            
+            	this.lastCrawled.put(info.getHostName(), new Long(Instant.now().toEpochMilli()));
+            	this.lastCrawled.notifyAll();
+            
+            if(info.isSecure()) {
+                connSec.disconnect();
             }
+            else {
+                conn.disconnect();
+            }
+            is.close();
+            return true;
         }
-        return robots;
+        catch(IOException e) {
+            throw e;
+        }        
     }
 
 
