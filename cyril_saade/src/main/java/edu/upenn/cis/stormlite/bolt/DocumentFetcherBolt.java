@@ -11,6 +11,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -30,6 +32,8 @@ import edu.upenn.cis.stormlite.tuple.Values;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 
 import edu.upenn.cis.stormlite.CrawlerFactory;
 
@@ -72,7 +76,7 @@ public class DocumentFetcherBolt implements IRichBolt{
         //master.setWorking(true);
         URLInfo url = (URLInfo) input.getObjectByField("URL");
         log.debug(getExecutorId() + " received URL: " + url.toString());
-//        System.out.println("Indexing:" + url.toString());
+        System.out.println("Indexing:" + url.toString());
         try {
             if(url.getNextOperation().equals("Robot.txt")) {
                 
@@ -80,13 +84,14 @@ public class DocumentFetcherBolt implements IRichBolt{
             }
             
             // TODO: wait delay
+            master.deferCrawl(url.getHostName());
             if(url.getNextOperation().equals("HEAD")) {
                 sendRequest(url);
             }
             
             // TODO: wait delay
+            master.deferCrawl(url.getHostName());
             if(url.getNextOperation().equals("GET")) {
-            	System.out.println("=================== Sending GET ==============");
                 sendRequest(url);
             }
         }
@@ -175,30 +180,32 @@ public class DocumentFetcherBolt implements IRichBolt{
                 if(info.isSecure()) {
                     
                     connSec = (HttpsURLConnection)url.openConnection();
-                    System.out.println("Connection Type: "+info.getNextOperation());
                     connSec.setRequestMethod(info.getNextOperation());
                     connSec.setRequestProperty("User-Agent", "cis455crawler");
                     connSec.setRequestProperty("Host", info.getHostName());
-                    
+                    connSec.setDoOutput(false);
                     if(doModifiedSince)
                         connSec.setRequestProperty("If-Modified-Since", dateStr);
-                    
                     is = new BufferedReader(new InputStreamReader(connSec.getInputStream()));
                 }
                 else {
                 		conn = (HttpURLConnection)url.openConnection();
-                		System.out.println("Connection Type: "+info.getNextOperation());
                 		conn.setRequestMethod(info.getNextOperation());
+                		conn.setDoOutput(false);
                 		conn.setRequestProperty("User-Agent", "cis455crawler");
                 		conn.setRequestProperty("Host", info.getHostName());
                 		
                 		if(doModifiedSince)
                 			conn.setRequestProperty("If-Modified-Since", dateStr);
-                    
                     is = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                 }
                 
     
+                synchronized(master.getLastCrawledQueue())
+                {
+                		master.getLastCrawledQueue().put(info.getHostName(), new Long(Instant.now().toEpochMilli()));
+                		master.getLastCrawledQueue().notifyAll();
+                }
                 
                 /****** READING HEAD RESPONSE FROM WEBSITE ******/
                
@@ -217,6 +224,7 @@ public class DocumentFetcherBolt implements IRichBolt{
                            contentType = header.getValue().get(0);
                        }
                        else if(header.getKey().toLowerCase().equals("content-length")) {
+                    	   
                            contentLength = Integer.parseInt(header.getValue().get(0).trim()) / 1000000;
                            docLength = Integer.parseInt(header.getValue().get(0).trim());
                        }
@@ -224,35 +232,28 @@ public class DocumentFetcherBolt implements IRichBolt{
                }
                else {
             	   
-                   String firstLine = is.readLine();  // reading first line
-                   responseCode = Integer.parseInt(firstLine.split(" ")[1].trim());
-                   while((firstLine = is.readLine()) != null) {
-                       if(firstLine.equals("") || firstLine.equals(" ") || firstLine.equals("/r/n")) {
-                           break;
-                       }
-                       if(!firstLine.contains(":")) {
+                   responseCode = conn.getResponseCode();
+                   for(Map.Entry<String, List<String>> header : conn.getHeaderFields().entrySet()) {
+                       if(header.getKey() == null) {
                            continue;
                        }
-                       String headerName = firstLine.split(":")[0];
-                       if(headerName == null) {
-                           continue;
+                       if(header.getKey().toLowerCase().equals("content-type")) {
+                           contentType = header.getValue().get(0);
                        }
-
-                       String headerVal = firstLine.split(":")[1];
-                       
-                       if(headerName.toLowerCase().equals("content-type")) {
-                            contentType = headerVal;
-                       }
-                       else if(headerName.toLowerCase().equals("content-length")) {
-                           contentLength = Integer.parseInt(headerVal.trim()) / 1000000;
-                           docLength = Integer.parseInt(headerVal.trim());
+                       else if(header.getKey().toLowerCase().equals("content-length")) {
+                           contentLength = Integer.parseInt(header.getValue().get(0).trim()) / 1000000;
+                           docLength = Integer.parseInt(header.getValue().get(0).trim());
                        }
                    }
                }
 
-                
+               if(contentLength == null) 
+            	   		contentLength = 0;
+               if(contentType == null) {
+            	   		System.out.println("ERROR in HEAD: response does not contain content type");
+            	   		contentType = "html";
+               }
                if(info.getNextOperation().equals("HEAD") && (responseCode == 200)) { // if it has been modified since
-                    
                     // checking if file is acceptable
                     if((!contentType.toLowerCase().contains("html") 
                     		&& !contentType.toLowerCase().contains("xml")) 
@@ -295,6 +296,46 @@ public class DocumentFetcherBolt implements IRichBolt{
 //                   info.setNextOperation("GET");
                    return;
                }
+               else if(info.getNextOperation().equals("HEAD") && (responseCode == 302 || responseCode == 301)) { // redirect
+            	   		URLInfo newUrl = null;
+            	   		if(info.isSecure()) {
+            	   			newUrl = new URLInfo(connSec.getHeaderFields().get("Location").get(0));
+            	   		}
+            	   		else {
+            	   			newUrl = new URLInfo(conn.getHeaderFields().get("Location").get(0));
+            	   		}
+            	   		CrawlerFactory.getSiteQueue().put(newUrl.getHostName());
+            	   		synchronized(CrawlerFactory.getURLqueue()) {
+            	   			if(CrawlerFactory.getURLqueue().get(newUrl.getHostName()) == null || (CrawlerFactory.getURLqueue().get(newUrl.getHostName()).isEmpty()))
+            	   				CrawlerFactory.getURLqueue().put(newUrl.getHostName(), new ArrayList<URLInfo>());
+            	   			List<URLInfo> newUrls = CrawlerFactory.getURLqueue().get(newUrl.getHostName());
+        	           
+	        	           // checking if url exists if url list
+	        	           boolean exists = false;
+	        	           for(int i=0; i<newUrls.size(); i++) {
+	        	        	   		if(newUrls.get(i).toString().equals(newUrl.toString())) {
+	        	        	   			exists = true;
+	        	        	   			break;
+	        	        	   		}
+	        	           }
+        	           
+	        	           if(!exists && !newUrls.contains(newUrl))
+	        	        	   		newUrls.add(newUrl);
+	        	           //CrawlerFactory.getURLqueue().put(newUrl.getHostName(), newUrls);
+	        	           if(!CrawlerFactory.getSiteQueue().contains(newUrl.getHostName()))
+	        	        	   		CrawlerFactory.getSiteQueue().put(newUrl.getHostName());
+	        	           CrawlerFactory.getURLqueue().notifyAll();   
+            	   		}
+            	   		if(info.isSecure()) {
+                        connSec.disconnect();
+                        is.close();
+                    }
+                    else {
+                        conn.disconnect();
+                        is.close();
+                    }
+            	   		return;
+               }
                else if(info.getNextOperation().equals("HEAD")) { // if we got another error from the server
                    System.out.println("ERROR in head request for " + info.toString() + " Response Code:" + responseCode.toString());
                    if(info.isSecure()) {
@@ -305,7 +346,7 @@ public class DocumentFetcherBolt implements IRichBolt{
                         conn.disconnect();
                         is.close();
                     }
-                    System.exit(1);
+                   // System.exit(1);
                    return;
                }
                
@@ -333,7 +374,6 @@ public class DocumentFetcherBolt implements IRichBolt{
                
                /****** READING GET RESPONSE FROM WEBSITE ******/
                if(info.getNextOperation().equals("GET")) {
-            	   System.out.println("Connection Type: "+info.getNextOperation());
                    // check status
                    if(responseCode != 200) {
                        System.out.println("ERROR in GET request for " + info.toString() + " Response Code:" + responseCode.toString());
@@ -350,27 +390,43 @@ public class DocumentFetcherBolt implements IRichBolt{
                        return;
                    }
                    
-                   if(docLength == -1) {
-                       System.out.println("ERROR in GET request for " + info.toString() + " Response header does not include content-length header");
-                       info.setNextOperation("NULL");
-
-                       if(info.isSecure()) {
-                            connSec.disconnect();
-                            is.close();
-                        }
-                        else {
-                            conn.disconnect();
-                            is.close();
-                        }
-                        System.exit(1);
-                       return;
-                   }
-                    
-                    
+//                   if(docLength == -1) {
+//                       System.out.println("ERROR in GET request for " + info.toString() + " Response header does not include content-length header");
+//                       info.setNextOperation("NULL");
+//
+//                       if(info.isSecure()) {
+//                            connSec.disconnect();
+//                            is.close();
+//                        }
+//                        else {
+//                            conn.disconnect();
+//                            is.close();
+//                        }
+//                       // System.exit(1);
+//                       return;
+//                   }
+                   
+                   //while(!is.readLine().contains("/head")) {continue;} //skipping the head
                    // Read body into a String
-                   char []rawBody = new char[docLength];
-                   is.read(rawBody, 0, docLength);
-                   String responseBody = new String(rawBody);
+                   String responseBody;
+                   
+                   try {
+                	   		Document doc = Jsoup.connect(url.toString()).get();
+                	   		responseBody = doc.toString();
+                   }
+                   catch(org.jsoup.UnsupportedMimeTypeException e) {
+                	   		System.out.println("UNSUPPORTED MIME for URL" + url.toString());
+                	   		info.setNextOperation("NULL");
+                	   		return;
+//                	   		while(!is.readLine().contains("/head")) {continue;} //skipping the head
+//                	   		char []rawBody = new char[docLength];
+//                         is.read(rawBody, 0, docLength);
+//                         responseBody = new String(rawBody);
+                	   		
+                   }
+                   //char []rawBody = new char[docLength];
+                   //is.read(rawBody, 0, docLength);
+                   //String responseBody = new String(rawBody);
                    
                    // Computing MD5 hash of message
                    MessageDigest md = MessageDigest.getInstance("MD5");
