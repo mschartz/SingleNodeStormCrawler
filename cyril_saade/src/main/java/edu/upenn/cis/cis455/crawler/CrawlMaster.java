@@ -1,5 +1,7 @@
 package edu.upenn.cis.cis455.crawler;
 
+import java.util.Map;
+
 import edu.upenn.cis.cis455.crawler.info.URLInfo;
 
 public interface CrawlMaster {
@@ -13,6 +15,8 @@ public interface CrawlMaster {
      * Returns true if the crawl delay says we should wait
      */
     public boolean deferCrawl(String site);
+    
+    public Map<String, Long> getLastCrawledQueue();
     
     /**
      * Returns true if it's permissible to fetch the content,

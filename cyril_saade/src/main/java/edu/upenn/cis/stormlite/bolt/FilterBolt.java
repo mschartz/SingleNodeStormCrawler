@@ -64,7 +64,7 @@ public class FilterBolt implements IRichBolt{
 
         		URLInfo newURL = (URLInfo) input.getObjectByField("URL");
             log.debug(getExecutorId() + " New URL: " + newURL.toString());
-            
+            //System.out.println(getExecutorId() + " New URL: " + newURL.toString());
             	synchronized(urlQueue) {
 	           if(urlQueue.get(newURL.getHostName()) == null || (urlQueue.get(newURL.getHostName()).isEmpty()))
 	        	   		urlQueue.put(newURL.getHostName(), new ArrayList<URLInfo>());

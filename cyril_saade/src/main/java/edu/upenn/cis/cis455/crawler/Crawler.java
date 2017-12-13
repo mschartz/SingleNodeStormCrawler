@@ -128,7 +128,14 @@ public class Crawler implements CrawlMaster {
 
         // Check if we have reached the crawl delay
         if((Instant.now().toEpochMilli() - lastCrawlTime.longValue()) < crawlDelay.longValue()) {
-            return true;
+            long sleepTime = crawlDelay.longValue() - (Instant.now().toEpochMilli() - lastCrawlTime.longValue());
+        		try {
+					Thread.sleep(sleepTime);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+        		return true;
         }
         else {
             return false;
@@ -155,6 +162,12 @@ public class Crawler implements CrawlMaster {
                 System.out.println("Reading robots file "+ info.toString());
                 if(!readRobotsFile(info)) {
                     System.out.println("Cannot read robots.txt file"); //TODO
+                    synchronized(this.robots)
+                    {
+                    	RobotsTxtInfo rob = new RobotsTxtInfo();
+                    	this.robots.put(info.getHostName(), rob);
+                    	robots.notifyAll();
+                    }
                 }
                 
             } catch (Exception e) {
@@ -217,7 +230,7 @@ public class Crawler implements CrawlMaster {
     public void incCount() {
         //System.out.print(".");
         crawled++;
-//        System.out.println("Num indexed:" + crawled);
+        System.out.println("Num indexed:" + crawled);
     }
 
     @Override
@@ -304,7 +317,7 @@ public class Crawler implements CrawlMaster {
             String userAgent = "";
             while((currLine = is.readLine()) != null) {
 
-                if(currLine.trim().startsWith("#")) {
+            		if(currLine.trim().startsWith("#")) {
                     continue;
                 }
 
@@ -312,9 +325,9 @@ public class Crawler implements CrawlMaster {
                     userAgent = "";
                     continue;
                 }
-                
                 String header = currLine.split(":")[0];
-                String val = currLine.split(":")[1];
+                String val = "";
+                try {val = currLine.split(":")[1];}catch(java.lang.ArrayIndexOutOfBoundsException e) {continue;}
                 
                 if(header.toLowerCase().equals("disallow")) {
                     newRob.addDisallowedLink(userAgent, val.trim());
@@ -350,6 +363,10 @@ public class Crawler implements CrawlMaster {
             is.close();
             info.setNextOperation("HEAD");
             return true;
+        }
+        catch(java.lang.ArrayIndexOutOfBoundsException e1) {
+        		e1.printStackTrace();
+        		return false;
         }
         catch(IOException e) {
             throw e;
@@ -603,6 +620,10 @@ public class Crawler implements CrawlMaster {
 
     public Long getLastCrawled(String site) {
         return this.lastCrawled.get(site);
+    }
+    
+    public Map<String, Long> getLastCrawledQueue() {
+    		return this.lastCrawled;
     }
     
     public Map<String, List<URLInfo>> getURLQueue() {

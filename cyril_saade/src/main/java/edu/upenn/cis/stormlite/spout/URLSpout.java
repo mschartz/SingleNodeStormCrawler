@@ -77,10 +77,16 @@ public class URLSpout implements IRichSpout {
 
 						List<URLInfo> urls= urlQueue.get(site);
 						Iterator<URLInfo> iter = urls.iterator();
+//						URLInfo url = urls.get(0);
+//						urls.remove(0);
+//						if(master.isOKtoCrawl(url)) {
+//							master.deferCrawl(url.getHostName());
+//							this.collector.emit(new Values<Object>(url));
+//						}
 						while (iter.hasNext()) {
 							URLInfo url = iter.next();
 							if(master.isOKtoCrawl(url)) {
-								while(master.deferCrawl(url.getHostName())) {} // busy wait
+									master.deferCrawl(url.getHostName()); // busy wait
 									this.collector.emit(new Values<Object>(url));
 							}
 							else

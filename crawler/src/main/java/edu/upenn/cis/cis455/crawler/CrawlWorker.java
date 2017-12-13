@@ -82,7 +82,7 @@ public class CrawlWorker extends Thread {
                         urlQueue.remove(host);
                         break;
                     }
-                    if (master.isOKtoCrawl(site, info.getPortNo(), info.isSecure())) {
+                    if (master.isOKtoCrawl(site)) {
 
                         // If we need to defer the crawl, put the URL back in its list
                         // and move the site to the back of the crawl queue

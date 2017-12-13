@@ -72,22 +72,28 @@ public class LinkExtractorBolt implements IRichBolt{
         URLInfo url = (URLInfo) input.getObjectByField("URL");
         log.debug(getExecutorId() + " received URL: " + url.toString());
         String body = input.getStringByField("body");
-        
+        //System.out.println("received " + url.toString());
         /*** PARSING NEEDS TO BE DONE IN LinkExtractor (MOVE ALL IF STATEMENT BELOW TO LinkExtractor) ***/
         if(master.isOKtoParse(url)) {
             log.info("Parsing " + url.toString());
             
-            BufferedReader bufReader = new BufferedReader(new StringReader(body));
-            
-            String line=null;
-            try {
-                while( (line=bufReader.readLine()) != null ) {
-                    addLinks(url, line);
-                }
+            //BufferedReader bufReader = new BufferedReader(new StringReader(body));
+            log.debug(body);
+            Document doc = Jsoup.parse(body);
+            Elements links = doc.select("a[href]");
+            for(Element link: links) {
+            		System.out.println("Extrated Link:" + link.attr("abs:href"));
+            		enqueueLink(url, link.attr("abs:href"));
             }
-            catch(Exception e) {
-                e.printStackTrace();
-            }
+//            String line=null;
+//            try {
+//                while( (line=bufReader.readLine()) != null ) {
+//                		addLinks(url, line);
+//                }
+//            }
+//            catch(Exception e) {
+//                e.printStackTrace();
+//            }
         }
     }
 
@@ -175,7 +181,9 @@ public class LinkExtractorBolt implements IRichBolt{
     }
     
     void enqueueLink(URLInfo info, String link) {
-
+    		//System.out.println("Curr URL:" + info.toString() + " Next URL:" + link);
+    		if(link.equals(""))
+    			return;
         if (link.startsWith("/")) {
             String nextUrl = (info.isSecure() ? "https://" : "http://") +
                 info.getHostName() + (info.getPortNo() == 80 ? "" : ":" + info.getPortNo()) +
@@ -193,7 +201,6 @@ public class LinkExtractorBolt implements IRichBolt{
             else {
                 nextUrl = info.toString().substring(0, info.toString().lastIndexOf('/')+1) + link;
             }
-                
             addToQueue(nextUrl);
         }
     }

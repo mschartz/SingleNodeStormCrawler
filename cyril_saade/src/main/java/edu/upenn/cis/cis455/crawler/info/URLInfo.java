@@ -1,5 +1,6 @@
 package edu.upenn.cis.cis455.crawler.info;
 
+import java.net.MalformedURLException;
 import java.net.URL;
 
 public class URLInfo {
@@ -14,6 +15,13 @@ public class URLInfo {
 	 * Constructor called with raw URL as input - parses URL to obtain host name and file path
 	 */
 	public URLInfo(String docURL) {
+//	    try {
+//			URL url = new URL(docURL);
+//			secure = docURL.startsWith("https://");
+//			filePath = 
+//		} catch (MalformedURLException e) {
+//			e.printStackTrace();
+//		}
 	    
 		if(docURL == null || docURL.equals(""))
 			return;
