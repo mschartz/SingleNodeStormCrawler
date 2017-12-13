@@ -102,7 +102,7 @@ public class DocumentFetcherBolt implements IRichBolt{
 
         if(url.getNextOperation().equals("NULL")) { // indexed the document
             master.incCount();
-            collector.emit(new Values<Object>(url, db.getDocument(url.toString())));
+            collector.emit(new Values<Object>(url, db.getDocument(url.toString()))); //TODO: dont have time retrieving document from DB --> directly emit with body
         }
         //master.setWorking(false);
     }
@@ -250,7 +250,7 @@ public class DocumentFetcherBolt implements IRichBolt{
                if(contentLength == null) 
             	   		contentLength = 0;
                if(contentType == null) {
-            	   		System.out.println("ERROR in HEAD: response does not contain content type");
+            	   		System.out.println("ERROR in HEAD: response does not contain content type - continue fetching");
             	   		contentType = "html";
                }
                if(info.getNextOperation().equals("HEAD") && (responseCode == 200)) { // if it has been modified since
@@ -304,7 +304,6 @@ public class DocumentFetcherBolt implements IRichBolt{
             	   		else {
             	   			newUrl = new URLInfo(conn.getHeaderFields().get("Location").get(0));
             	   		}
-            	   		CrawlerFactory.getSiteQueue().put(newUrl.getHostName());
             	   		synchronized(CrawlerFactory.getURLqueue()) {
             	   			if(CrawlerFactory.getURLqueue().get(newUrl.getHostName()) == null || (CrawlerFactory.getURLqueue().get(newUrl.getHostName()).isEmpty()))
             	   				CrawlerFactory.getURLqueue().put(newUrl.getHostName(), new ArrayList<URLInfo>());
@@ -322,10 +321,12 @@ public class DocumentFetcherBolt implements IRichBolt{
 	        	           if(!exists && !newUrls.contains(newUrl))
 	        	        	   		newUrls.add(newUrl);
 	        	           //CrawlerFactory.getURLqueue().put(newUrl.getHostName(), newUrls);
-	        	           if(!CrawlerFactory.getSiteQueue().contains(newUrl.getHostName()))
-	        	        	   		CrawlerFactory.getSiteQueue().put(newUrl.getHostName());
+	        	          
 	        	           CrawlerFactory.getURLqueue().notifyAll();   
             	   		}
+            	   		if(!CrawlerFactory.getSiteQueue().contains(newUrl.getHostName()))
+    	        	   			CrawlerFactory.getSiteQueue().put(newUrl.getHostName());
+            	   		
             	   		if(info.isSecure()) {
                         connSec.disconnect();
                         is.close();
@@ -465,7 +466,8 @@ public class DocumentFetcherBolt implements IRichBolt{
                 }
            }
            catch(Exception e) {
-               throw e;
+        	   	e.printStackTrace();   
+        	   	throw e;
            }
 
         return;

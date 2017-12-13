@@ -82,7 +82,7 @@ public class LinkExtractorBolt implements IRichBolt{
             Document doc = Jsoup.parse(body);
             Elements links = doc.select("a[href]");
             for(Element link: links) {
-            		System.out.println("Extrated Link:" + link.attr("abs:href"));
+            		//System.out.println("Extrated Link:" + link.attr("abs:href"));
             		enqueueLink(url, link.attr("abs:href"));
             }
 //            String line=null;
@@ -174,7 +174,7 @@ public class LinkExtractorBolt implements IRichBolt{
         }
     }
     
-    synchronized void addToQueue(String nextUrl) {
+    void addToQueue(String nextUrl) {
         
         URLInfo info = new URLInfo(nextUrl);
         collector.emit(new Values<Object>(info));

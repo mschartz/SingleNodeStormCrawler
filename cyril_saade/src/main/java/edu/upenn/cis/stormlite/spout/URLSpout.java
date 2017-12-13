@@ -69,7 +69,10 @@ public class URLSpout implements IRichSpout {
 	public void nextTuple() {
 		do {
 			try {
-
+				
+//				if(siteQueue.isEmpty()) {
+//					System.out.println("Site Queue is empty");
+//				}
 				String site = siteQueue.take();
 				synchronized(urlQueue) {
 					if((site != null) && (!urlQueue.isEmpty()) && (urlQueue.containsKey(site))) {
@@ -94,7 +97,7 @@ public class URLSpout implements IRichSpout {
 						}
 
 
-						master.setWorking(false);
+						//master.setWorking(false);
 					}
 					urlQueue.remove(site);
 					urlQueue.notifyAll();

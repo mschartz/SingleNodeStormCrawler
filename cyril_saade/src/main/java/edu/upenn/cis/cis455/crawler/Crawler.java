@@ -186,6 +186,9 @@ public class Crawler implements CrawlMaster {
 	        robots.notifyAll();
         }
         
+        if(robFile == null) {
+        		return true;
+        }
         for(int i=1; i<paths.length; i++) {
             boolean forbidden = false;
             currPath += "/" + paths[i];
@@ -291,12 +294,13 @@ public class Crawler implements CrawlMaster {
                 connSec.setRequestMethod("GET");
                 connSec.setRequestProperty("User-Agent", "cis455Crawler");
                 connSec.setRequestProperty("Host", info.getHostName());
-                
+                connSec.setConnectTimeout(1000);
                 is = new BufferedReader(new InputStreamReader(connSec.getInputStream()));
             }
             else {
             		conn = (HttpURLConnection)url.openConnection();
             		conn.setRequestMethod("GET");
+            		conn.setConnectTimeout(1000);
             		conn.setRequestProperty("User-Agent", "cis455Crawler");
             		conn.setRequestProperty("Host", info.getHostName());
             		
