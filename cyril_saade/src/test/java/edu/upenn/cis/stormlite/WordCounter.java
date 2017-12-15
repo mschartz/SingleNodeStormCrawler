@@ -85,7 +85,7 @@ public class WordCounter implements IRichBolt {
     public void execute(Tuple input) {
         String word = input.getStringByField("word");
         int count;
-        log.debug(getExecutorId() + " received " + word);
+//        log.debug(getExecutorId() + " received " + word);
         if (wordCounter.containsKey(word)) {
             count = wordCounter.get(word) + 1;
             wordCounter.put(word, wordCounter.get(word) + 1);

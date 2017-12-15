@@ -34,6 +34,8 @@ public class DBWrapper implements StorageInterface {
 	private EntityStore store;
 	
 	private Map<String,User> userMap = new HashMap<>();
+	private Map<String,String> pageRankMap = new HashMap<>();
+
 	private Map<Integer,CorpusEntry> corpus = new HashMap<>();
 	private Map<Integer,UrlEntry> urls = new HashMap<>();
 	private Map<String,Integer> invUrls = new HashMap<>();
@@ -48,9 +50,12 @@ public class DBWrapper implements StorageInterface {
 	private Map<String, DocumentMatches> channelToMatches = new HashMap<>();
 	
 	private static final String USER_STORE = "user_store";
-    private static final String CORPUS_STORE = "corpus_store";
+	private static final String PAGE_RANK_STORE = "page_rank_store";
+
+	private static final String CORPUS_STORE = "corpus_store";
     private static final String URL_STORE = "url_store";
-    private static final String INV_URL_STORE = "inv_url_store";
+
+	private static final String INV_URL_STORE = "inv_url_store";
     private static final String LEX_STORE = "lex_store";
     private static final String INV_LEX_STORE = "inv_lex_store";
     private static final String OCCURRENCE_STORE = "occurrence_store";
@@ -64,7 +69,9 @@ public class DBWrapper implements StorageInterface {
     private StoredClassCatalog javaCatalog;
     
     private Database userDb;
-    private Database corpusDb;
+	private Database pageRankDb;
+
+	private Database corpusDb;
     private Database urlDb;
     private Database invUrlDb;
     private Database lexDb;
@@ -95,7 +102,9 @@ public class DBWrapper implements StorageInterface {
         javaCatalog = new StoredClassCatalog(catalogDb);
         
         userDb = myEnv.openDatabase(null, USER_STORE, dbConfig);
-        corpusDb = myEnv.openDatabase(null, CORPUS_STORE, dbConfig);
+		pageRankDb = myEnv.openDatabase(null, PAGE_RANK_STORE, dbConfig);
+
+		corpusDb = myEnv.openDatabase(null, CORPUS_STORE, dbConfig);
         urlDb = myEnv.openDatabase(null, URL_STORE, dbConfig);
         invUrlDb = myEnv.openDatabase(null, INV_URL_STORE, dbConfig);
         lexDb = myEnv.openDatabase(null, LEX_STORE, dbConfig);
@@ -125,7 +134,9 @@ public class DBWrapper implements StorageInterface {
 	    EntryBinding<DocumentMatches> matchesBinding = new SerialBinding<DocumentMatches>(javaCatalog, DocumentMatches.class);
 	    
 	    userMap = new StoredSortedMap<String,User>(userDb, stringBinding, userBinding, true);
-	    corpus = new StoredSortedMap<Integer,CorpusEntry>(corpusDb, intBinding, corpusBinding, true);
+		pageRankMap = new StoredSortedMap<String,String>(pageRankDb, stringBinding, stringBinding, true);
+
+		corpus = new StoredSortedMap<Integer,CorpusEntry>(corpusDb, intBinding, corpusBinding, true);
 	    urls = new StoredSortedMap<Integer,UrlEntry>(urlDb, intBinding, urlBinding, true);
 	    invUrls = new StoredSortedMap<String,Integer>(urlDb, stringBinding, intBinding, true);
 	    lex = new StoredSortedMap<Integer,LexiconEntry>(urlDb, intBinding, lexiconBinding, true);
@@ -145,7 +156,8 @@ public class DBWrapper implements StorageInterface {
         channelToMatchesDb.close();
         registeredXPathsDb.close();
         userSubscriptionsDb.close();
-        userDb.close();
+		userDb.close();
+		pageRankDb.close();
         contentSeenDb.close();
         corpusDb.close();
         urlDb.close();
@@ -296,7 +308,19 @@ public class DBWrapper implements StorageInterface {
         return next;
     }
 
+
+
     @Override
+	public void addPageRankRecord(String url, String outLinks) {
+		pageRankMap.put(url, outLinks);
+	}
+	@Override
+	public String getPageRankRecord(String url) {
+		return pageRankMap.get(url);
+	}
+
+
+	@Override
     public boolean getSessionForUser(String username, String password) {
         if (userMap.get(username) != null &&
             userMap.get(username).getPassword().equals(password))

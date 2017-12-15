@@ -53,7 +53,7 @@ public class URLSpout implements IRichSpout {
 	@Override
 	public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
 		this.collector = collector;
-		log.debug(getExecutorId() + " opening URL reader");
+//		log.debug(getExecutorId() + " opening URL reader");
 	}
 
 

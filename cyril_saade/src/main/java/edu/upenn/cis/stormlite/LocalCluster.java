@@ -126,7 +126,7 @@ public class LocalCluster implements Runnable {
 					
 					newSpout.open(config, context, collector);
 					spoutStreams.get(key).add(newSpout);
-					log.debug("Created a spout executor " + key + "/" + newSpout.getExecutorId() + " of type " + spout.getLeft().getName());
+//					log.debug("Created a spout executor " + key + "/" + newSpout.getExecutorId() + " of type " + spout.getLeft().getName());
 				} catch (InstantiationException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -155,7 +155,7 @@ public class LocalCluster implements Runnable {
 					IRichBolt newBolt = bolt.getLeft().newInstance();
 					newBolt.prepare(config, context, collector);
 					boltStreams.get(key).add(newBolt);
-					log.debug("Created a bolt executor " + key + "/" + newBolt.getExecutorId() + " of type " + bolt.getLeft().getName());
+//					log.debug("Created a bolt executor " + key + "/" + newBolt.getExecutorId() + " of type " + bolt.getLeft().getName());
 				} catch (InstantiationException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -182,7 +182,7 @@ public class LocalCluster implements Runnable {
 			
 			for (IRichBolt bolt: boltStreams.get(stream)) {
 				router.addBolt(bolt);
-				log.debug("Adding a route from " + decl.getStream() + " to " + bolt);
+//				log.debug("Adding a route from " + decl.getStream() + " to " + bolt);
 			}
 			
 			if (topo.getBolts().containsKey(decl.getStream())) {

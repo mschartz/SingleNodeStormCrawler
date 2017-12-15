@@ -31,7 +31,14 @@ public interface StorageInterface {
 	 * Adds a user and returns an ID
 	 */
 	public int addUser(String firstname, String lastname, String username, String password);
-	
+
+	/*
+	 * Adds url -> outgoingLinks for use in page rank
+	 */
+
+	public void addPageRankRecord(String url, String outLinks);
+	public String getPageRankRecord(String url);
+
 	/**
 	 * Tries to log in the user, or else throws a HaltException
 	 */

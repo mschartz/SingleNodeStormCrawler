@@ -69,21 +69,29 @@ public class LinkExtractorBolt implements IRichBolt{
     @Override
     public void execute(Tuple input) { // TODO: we will actually be receiving the raw HTML
     //TODO: save document to DB
-        URLInfo url = (URLInfo) input.getObjectByField("URL");
-        log.debug(getExecutorId() + " received URL: " + url.toString());
+        URLInfo url = (URLInfo) input.getObjectByField("URL");  // this would be key
+//        log.debug(getExecutorId() + " received URL: " + url.toString());
         String body = input.getStringByField("body");
         //System.out.println("received " + url.toString());
         /*** PARSING NEEDS TO BE DONE IN LinkExtractor (MOVE ALL IF STATEMENT BELOW TO LinkExtractor) ***/
         if(master.isOKtoParse(url)) {
-            log.info("Parsing " + url.toString());
+//            log.info("Parsing " + url.toString());
             
             //BufferedReader bufReader = new BufferedReader(new StringReader(body));
-            log.debug(body);
+//            log.debug(body);
             Document doc = Jsoup.parse(body);
             Elements links = doc.select("a[href]");
+            StringBuilder outlinks = new StringBuilder();
+
             for(Element link: links) {
             		//System.out.println("Extrated Link:" + link.attr("abs:href"));
+                    outlinks.append(link.attr("abs:href"));
+                    outlinks.append( "\t");
             		enqueueLink(url, link.attr("abs:href"));
+            }
+            if(this.db.getPageRankRecord(url.toString()) == null) {
+//                System.out.println("ADDING\n " + url.toString() + " " + outlinks.toString());
+                this.db.addPageRankRecord(url.toString(), outlinks.toString());
             }
 //            String line=null;
 //            try {

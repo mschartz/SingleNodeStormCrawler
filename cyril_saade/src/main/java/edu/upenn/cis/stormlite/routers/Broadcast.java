@@ -59,7 +59,7 @@ public class Broadcast extends IStreamRouter {
 	protected List<IRichBolt> getBoltsFor(List<Object> tuple) {
 		
 		if (getBolts().isEmpty()) {
-			log.error("Could not find destination for " + tuple.toString());
+//			log.error("Could not find destination for " + tuple.toString());
 			return null;
 		}
 		

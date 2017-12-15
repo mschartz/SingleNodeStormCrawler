@@ -59,7 +59,7 @@ public class RoundRobin extends IStreamRouter {
 	protected List<IRichBolt> getBoltsFor(List<Object> tuple) {
 		
 		if (getBolts().isEmpty()) {
-			log.error("Could not find destination for " + tuple.toString());
+//			log.error("Could not find destination for " + tuple.toString());
 			return null;
 		}
 		
@@ -67,7 +67,7 @@ public class RoundRobin extends IStreamRouter {
 		
 		inx = (inx + 1) % getBolts().size();
 
-		log.debug("Routing " + tuple.toString() + " to " + bolt.getExecutorId());
+//		log.debug("Routing " + tuple.toString() + " to " + bolt.getExecutorId());
 		
         List<IRichBolt> bolts = new ArrayList<>();
         bolts.add(bolt);
