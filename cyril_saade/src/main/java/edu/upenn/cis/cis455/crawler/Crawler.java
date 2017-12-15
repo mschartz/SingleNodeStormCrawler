@@ -233,7 +233,7 @@ public class Crawler implements CrawlMaster {
     }
 
     @Override
-    public void incCount() {
+    public synchronized void incCount() {
         //System.out.print(".");
         crawled++;
       //  System.out.println("Num indexed:" + crawled);
