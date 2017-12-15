@@ -70,11 +70,6 @@ public class LinkExtractorBolt implements IRichBolt{
     public void execute(Tuple input) { // TODO: we will actually be receiving the raw HTML
     //TODO: save document to DB
         URLInfo url = (URLInfo) input.getObjectByField("URL");  // this would be key
-<<<<<<< HEAD
-//        log.debug(getExecutorId() + " received URL: " + url.toString());
-=======
-        log.debug(getExecutorId() + " received URL: " + url.toString());
->>>>>>> c0bbb889674822e5b48bd90b247b3ee7e8ca6f3a
         String body = input.getStringByField("body");
         //System.out.println("received " + url.toString());
         /*** PARSING NEEDS TO BE DONE IN LinkExtractor (MOVE ALL IF STATEMENT BELOW TO LinkExtractor) ***/
@@ -94,11 +89,6 @@ public class LinkExtractorBolt implements IRichBolt{
             		enqueueLink(url, link.attr("abs:href"));
             }
             if(this.db.getPageRankRecord(url.toString()) == null) {
-<<<<<<< HEAD
-//                System.out.println("ADDING\n " + url.toString() + " " + outlinks.toString());
-=======
-                System.out.println("ADDING\n " + url.toString() + " " + outlinks.toString());
->>>>>>> c0bbb889674822e5b48bd90b247b3ee7e8ca6f3a
                 this.db.addPageRankRecord(url.toString(), outlinks.toString());
             }
 //            String line=null;
@@ -223,4 +213,5 @@ public class LinkExtractorBolt implements IRichBolt{
     
 
 }
+
 
