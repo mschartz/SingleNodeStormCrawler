@@ -95,6 +95,10 @@ public class Crawler implements CrawlMaster {
         urlQueue.put(info.getHostName(), new ArrayList<URLInfo>());
         urlQueue.get(info.getHostName()).add(info);
         siteQueue.add(info.getHostName());
+        siteQueue.add("wikipedia.org");
+        siteQueue.add("espn.com");
+        siteQueue.add("imdb.com");
+        siteQueue.add("nytimes.com");
         
         System.out.println("Crawling started");
     }
@@ -234,6 +238,7 @@ public class Crawler implements CrawlMaster {
         //System.out.print(".");
         crawled++;
         System.out.println("Num indexed:" + crawled);
+	logger.info("Num indexed:"+crawled);
     }
 
     @Override
