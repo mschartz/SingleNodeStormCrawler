@@ -324,9 +324,11 @@ public class DocumentFetcherBolt implements IRichBolt{
 	        	          
 	        	           CrawlerFactory.getURLqueue().notifyAll();   
             	   		}
-            	   		if(!CrawlerFactory.getSiteQueue().contains(newUrl.getHostName()))
-    	        	   			CrawlerFactory.getSiteQueue().put(newUrl.getHostName());
-            	   		
+            	   		synchronized (CrawlerFactory.getSiteQueue()) {
+                            if (!CrawlerFactory.getSiteQueue().contains(newUrl.getHostName()))
+                                CrawlerFactory.getSiteQueue().put(newUrl.getHostName());
+                            CrawlerFactory.getSiteQueue().notifyAll();
+                        }
             	   		if(info.isSecure()) {
                         connSec.disconnect();
                         is.close();

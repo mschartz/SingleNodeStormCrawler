@@ -85,10 +85,12 @@ public class FilterBolt implements IRichBolt{
 	           
 	           urlQueue.notifyAll();
             }
-            	
-            	if(!siteQueue.contains(newURL.getHostName()))
-        	   		siteQueue.put(new String(newURL.getHostName()));
-            	master.setWorking(false);
+            	synchronized (siteQueue) {
+					if (!siteQueue.contains(newURL.getHostName()))
+						siteQueue.put(new String(newURL.getHostName()));
+					master.setWorking(false);
+					siteQueue.notifyAll();
+				}
         }
         catch(Exception e) {
             e.printStackTrace();
