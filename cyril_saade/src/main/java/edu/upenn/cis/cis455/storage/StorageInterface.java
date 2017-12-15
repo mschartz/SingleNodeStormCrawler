@@ -73,3 +73,4 @@ public interface StorageInterface {
 	public List<String> getMatches(String channelName);
 	
 }
+

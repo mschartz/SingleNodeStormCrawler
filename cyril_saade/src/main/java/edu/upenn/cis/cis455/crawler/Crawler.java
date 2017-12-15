@@ -99,7 +99,6 @@ public class Crawler implements CrawlMaster {
         siteQueue.add("espn.com");
         siteQueue.add("imdb.com");
         siteQueue.add("nytimes.com");
-
         System.out.println("Crawling started");
     }
     
@@ -237,8 +236,8 @@ public class Crawler implements CrawlMaster {
     public void incCount() {
         //System.out.print(".");
         crawled++;
-        System.out.println("Num indexed:" + crawled);
-        logger.debug("Num indexed:" + crawled);
+      //  System.out.println("Num indexed:" + crawled);
+	    logger.info("Num indexed:"+crawled);
     }
 
     @Override
