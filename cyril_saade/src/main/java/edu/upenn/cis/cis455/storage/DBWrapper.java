@@ -311,11 +311,11 @@ public class DBWrapper implements StorageInterface {
 
 
     @Override
-	public void addPageRankRecord(String url, String outLinks) {
+	public synchronized void addPageRankRecord(String url, String outLinks) {
 		pageRankMap.put(url, outLinks);
 	}
 	@Override
-	public String getPageRankRecord(String url) {
+	public synchronized String getPageRankRecord(String url) {
 		return pageRankMap.get(url);
 	}
 
