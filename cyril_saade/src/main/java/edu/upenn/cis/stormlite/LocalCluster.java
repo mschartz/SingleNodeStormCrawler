@@ -147,12 +147,11 @@ public class LocalCluster implements Runnable {
 		for (String key: topo.getBolts().keySet()) {
 			Pair<Class<? extends IRichBolt>, Integer> bolt = topo.getBolt(key);
 			
-			OutputCollector collector = new OutputCollector(context);
-			
 			boltStreams.put(key, new ArrayList<IRichBolt>());
 			for (int i = 0; i < bolt.getRight(); i++)
 				try {
 					IRichBolt newBolt = bolt.getLeft().newInstance();
+					OutputCollector collector = new OutputCollector(context);
 					newBolt.prepare(config, context, collector);
 					boltStreams.get(key).add(newBolt);
 //					log.debug("Created a bolt executor " + key + "/" + newBolt.getExecutorId() + " of type " + bolt.getLeft().getName());

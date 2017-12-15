@@ -76,7 +76,7 @@ public class DocumentFetcherBolt implements IRichBolt{
         //master.setWorking(true);
         URLInfo url = (URLInfo) input.getObjectByField("URL");
 //        log.debug(getExecutorId() + " received URL: " + url.toString());
-        System.out.println("Indexing:" + url.toString());
+        System.out.println(getExecutorId() + " Indexing:" + url.toString());
         try {
             if(url.getNextOperation().equals("Robot.txt")) {
                 

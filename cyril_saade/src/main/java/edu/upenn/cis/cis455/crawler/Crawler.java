@@ -95,10 +95,27 @@ public class Crawler implements CrawlMaster {
         urlQueue.put(info.getHostName(), new ArrayList<URLInfo>());
         urlQueue.get(info.getHostName()).add(info);
         siteQueue.add(info.getHostName());
-        siteQueue.add("wikipedia.org");
-        siteQueue.add("espn.com");
-        siteQueue.add("imdb.com");
-        siteQueue.add("nytimes.com");
+        try {
+            siteQueue.put("www.wikipedia.org");
+            //siteQueue.put("www.espn.com");
+            //siteQueue.put("www.imdb.com");
+            //siteQueue.put("www.nytimes.com");
+
+            urlQueue.put("www.wikipedia.org", new ArrayList<URLInfo>());
+            urlQueue.get("www.wikipedia.org").add(new URLInfo("https://www.wikipedia.org/"));
+
+            //urlQueue.put("www.espn.com", new ArrayList<URLInfo>());
+            //urlQueue.get("www.espn.com").add(new URLInfo("https://www.espn.com/"));
+
+            //urlQueue.put("www.imdb.com", new ArrayList<URLInfo>());
+            //urlQueue.get("www.imdb.com").add(new URLInfo("https://www.imdb.com/"));
+
+            //urlQueue.put("www.nytimes.com", new ArrayList<URLInfo>());
+            //urlQueue.get("www.nytimes.com").add(new URLInfo("https://www.nytimes.com/"));
+        }
+        catch(java.lang.InterruptedException e) {
+            e.printStackTrace();
+        }
         System.out.println("Crawling started");
     }
     
@@ -280,7 +297,7 @@ public class Crawler implements CrawlMaster {
      * Submits a GET /robots.txt to the website
      * Parses the body (i.e. the file) and saves it into a map
      */
-    public boolean readRobotsFile(URLInfo info) throws Exception{
+    public boolean readRobotsFile(URLInfo info){
         // Submit GET Req to site to get the Robots.txt file
         try {
 
@@ -372,12 +389,21 @@ public class Crawler implements CrawlMaster {
             info.setNextOperation("HEAD");
             return true;
         }
+        catch(java.io.FileNotFoundException e2) {
+            info.setNextOperation("HEAD");
+            e2.printStackTrace();
+            return false;
+        }
         catch(java.lang.ArrayIndexOutOfBoundsException e1) {
-        		e1.printStackTrace();
+        		info.setNextOperation("HEAD");
+                e1.printStackTrace();
         		return false;
         }
         catch(IOException e) {
-            throw e;
+            info.setNextOperation("HEAD");
+            e.printStackTrace();
+            return false;
+            //throw e;
         }        
     }
     

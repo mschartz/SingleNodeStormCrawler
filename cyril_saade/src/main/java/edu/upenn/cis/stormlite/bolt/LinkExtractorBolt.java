@@ -87,8 +87,7 @@ public class LinkExtractorBolt implements IRichBolt{
                     outlinks.append(link.attr("abs:href"));
                     outlinks.append( "\t");
             		enqueueLink(url, link.attr("abs:href"));
-                System.out.println("****EXECUTER*****");
-                System.out.println(executorId);
+
             }
             if(this.db.getPageRankRecord(url.toString()) == null) {
                 this.db.addPageRankRecord(url.toString(), outlinks.toString());
