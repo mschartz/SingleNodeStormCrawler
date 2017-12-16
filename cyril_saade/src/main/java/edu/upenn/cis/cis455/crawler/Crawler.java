@@ -700,7 +700,7 @@ public class Crawler implements CrawlMaster {
         
         StorageInterface db = StorageFactory.getDatabaseInstance(envPath);
         CrawlerFactory.setDatabaseInstance(db);
-        
+        System.out.println("NUM OF CRAWLED DOC (SIZE OF CORPUS): " + db.getCorpusSize());
         Crawler crawler = new Crawler(startUrl, db, size, count);
         
         CrawlerFactory.setCrawlMasterInstance(crawler);

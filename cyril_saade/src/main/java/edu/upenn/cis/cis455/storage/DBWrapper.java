@@ -192,12 +192,12 @@ public class DBWrapper implements StorageInterface {
 	
 	@Override
 	public String getDocument(String url) {
-	    Integer docId = invUrls.get(url);
-	    
-	    if (docId == null)
-	       return null;
-	    else
-	       return corpus.get(docId).getContent();
+		Integer docId = invUrls.get(url);
+
+		if (docId == null)
+			return null;
+		else
+			return corpus.get(docId).getContent();
 	}
 	
 	@Override

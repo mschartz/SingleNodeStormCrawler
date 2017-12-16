@@ -186,7 +186,7 @@ public class DocumentFetcherBolt implements IRichBolt{
                     connSec.setDoOutput(false);
                     if(doModifiedSince)
                         connSec.setRequestProperty("If-Modified-Since", dateStr);
-                    is = new BufferedReader(new InputStreamReader(connSec.getInputStream()));
+                    //is = new BufferedReader(new InputStreamReader(connSec.getInputStream()));
                 }
                 else {
                 		conn = (HttpURLConnection)url.openConnection();
@@ -197,7 +197,7 @@ public class DocumentFetcherBolt implements IRichBolt{
                 		
                 		if(doModifiedSince)
                 			conn.setRequestProperty("If-Modified-Since", dateStr);
-                    is = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    //is = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                 }
                 
     
@@ -269,11 +269,11 @@ public class DocumentFetcherBolt implements IRichBolt{
                     }
                     if(info.isSecure()) {
                         connSec.disconnect();
-                        is.close();
+                        //is.close();
                     }
                     else {
                         conn.disconnect();
-                        is.close();
+                        //is.close();
                     }
                     info.setNextOperation("GET");
                     return;
@@ -287,11 +287,11 @@ public class DocumentFetcherBolt implements IRichBolt{
                     
                    if(info.isSecure()) {
                         connSec.disconnect();
-                        is.close();
+                        //is.close();
                     }
                     else {
                         conn.disconnect();
-                        is.close();
+                        //is.close();
                     }
 //                   info.setNextOperation("GET");
                    return;
@@ -331,11 +331,11 @@ public class DocumentFetcherBolt implements IRichBolt{
                         }
             	   		if(info.isSecure()) {
                         connSec.disconnect();
-                        is.close();
+                        //is.close();
                     }
                     else {
                         conn.disconnect();
-                        is.close();
+                        //is.close();
                     }
             	   		return;
                }
@@ -343,11 +343,11 @@ public class DocumentFetcherBolt implements IRichBolt{
                    System.out.println("ERROR in head request for " + info.toString() + " Response Code:" + responseCode.toString());
                    if(info.isSecure()) {
                         connSec.disconnect();
-                        is.close();
+                        //is.close();
                     }
                     else {
                         conn.disconnect();
-                        is.close();
+                        //is.close();
                     }
                    // System.exit(1);
                    return;
@@ -383,11 +383,11 @@ public class DocumentFetcherBolt implements IRichBolt{
                        info.setNextOperation("NULL");
                        if(info.isSecure()) {
                             connSec.disconnect();
-                            is.close();
+                            //is.close();
                         }
                         else {
                             conn.disconnect();
-                            is.close();
+                            //is.close();
                         }
                         System.exit(1);
                        return;
@@ -439,11 +439,11 @@ public class DocumentFetcherBolt implements IRichBolt{
                        info.setNextOperation("SEEN");
                        if(info.isSecure()) {
                             connSec.disconnect();
-                            is.close();
+                            //is.close();
                         }
                         else {
                             conn.disconnect();
-                            is.close();
+                            //is.close();
                         }
                        return;
                    }
@@ -460,16 +460,16 @@ public class DocumentFetcherBolt implements IRichBolt{
                
                if(info.isSecure()) {
                     connSec.disconnect();
-                    is.close();
+                    //is.close();
                 }
                 else {
                     conn.disconnect();
-                    is.close();
+                    //is.close();
                 }
            }
            catch(Exception e) {
         	   	e.printStackTrace();   
-        	   	throw e;
+        	   	//throw e;
            }
 
         return;
