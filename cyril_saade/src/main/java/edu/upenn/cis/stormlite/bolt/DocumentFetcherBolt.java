@@ -183,6 +183,8 @@ public class DocumentFetcherBolt implements IRichBolt{
                     connSec.setRequestMethod(info.getNextOperation());
                     connSec.setRequestProperty("User-Agent", "cis455crawler");
                     connSec.setRequestProperty("Host", info.getHostName());
+                    connSec.setConnectTimeout(3000);
+                    connSec.setReadTimeout(3000);
                     connSec.setDoOutput(false);
                     if(doModifiedSince)
                         connSec.setRequestProperty("If-Modified-Since", dateStr);
@@ -193,6 +195,8 @@ public class DocumentFetcherBolt implements IRichBolt{
                 		conn.setRequestMethod(info.getNextOperation());
                 		conn.setDoOutput(false);
                 		conn.setRequestProperty("User-Agent", "cis455crawler");
+                        conn.setConnectTimeout(3000);
+                        conn.setReadTimeout(3000);
                 		conn.setRequestProperty("Host", info.getHostName());
                 		
                 		if(doModifiedSince)
@@ -467,6 +471,10 @@ public class DocumentFetcherBolt implements IRichBolt{
                     //is.close();
                 }
            }
+           catch(java.net.SocketTimeoutException e1) {
+            e1.printStackTrace();
+            throw e1;
+           }
            catch(Exception e) {
         	   	e.printStackTrace();   
         	   	//throw e;
@@ -475,3 +483,4 @@ public class DocumentFetcherBolt implements IRichBolt{
         return;
     }
 }
+

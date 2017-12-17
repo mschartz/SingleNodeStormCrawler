@@ -92,26 +92,27 @@ public class Crawler implements CrawlMaster {
         // Enqueue the first URL
         URLInfo info = new URLInfo(startUrl);
         
-        urlQueue.put(info.getHostName(), new ArrayList<URLInfo>());
-        urlQueue.get(info.getHostName()).add(info);
-        siteQueue.add(info.getHostName());
+//        urlQueue.put(info.getHostName(), new ArrayList<URLInfo>());
+//        urlQueue.get(info.getHostName()).add(info);
+//        siteQueue.add(info.getHostName());
         try {
-            siteQueue.put("www.wikipedia.org");
-            //siteQueue.put("www.espn.com");
-            //siteQueue.put("www.imdb.com");
-            //siteQueue.put("www.nytimes.com");
+            siteQueue.put("www.allsides.com");
+            siteQueue.put("www.theguardian.com");
+            siteQueue.put("news.ycombinator.com");
+            siteQueue.put("medium.com");
 
-            urlQueue.put("www.wikipedia.org", new ArrayList<URLInfo>());
-            urlQueue.get("www.wikipedia.org").add(new URLInfo("https://www.wikipedia.org/"));
+            urlQueue.put("www.allsides.com", new ArrayList<URLInfo>());
+            urlQueue.get("www.allsides.com").add(new URLInfo("https://www.allsides.com/unbiased-balanced-news/"));
 
-            //urlQueue.put("www.espn.com", new ArrayList<URLInfo>());
-            //urlQueue.get("www.espn.com").add(new URLInfo("https://www.espn.com/"));
+	    urlQueue.put("www.theguardian.com", new ArrayList<URLInfo>());
+            urlQueue.get("www.theguardian.com").add(new URLInfo("https://www.theguardian.com/us"));
 
-            //urlQueue.put("www.imdb.com", new ArrayList<URLInfo>());
-            //urlQueue.get("www.imdb.com").add(new URLInfo("https://www.imdb.com/"));
+            urlQueue.put("news.ycombinator.com", new ArrayList<URLInfo>());
+            urlQueue.get("news.ycombinator.com").add(new URLInfo("https://news.ycombinator.com/"));
 
-            //urlQueue.put("www.nytimes.com", new ArrayList<URLInfo>());
-            //urlQueue.get("www.nytimes.com").add(new URLInfo("https://www.nytimes.com/"));
+            urlQueue.put("medium.com", new ArrayList<URLInfo>());
+            urlQueue.get("medium.com").add(new URLInfo("https://medium.com/"));
+
         }
         catch(java.lang.InterruptedException e) {
             e.printStackTrace();
@@ -190,7 +191,11 @@ public class Crawler implements CrawlMaster {
                     }
                 }
                 
-            } catch (Exception e) {
+            }
+            catch(java.net.SocketTimeoutException e1) {
+                return true;
+            }
+            catch (Exception e) {
                 e.printStackTrace();
             }
             info.setNextOperation("Robot.txt");
@@ -297,7 +302,7 @@ public class Crawler implements CrawlMaster {
      * Submits a GET /robots.txt to the website
      * Parses the body (i.e. the file) and saves it into a map
      */
-    public boolean readRobotsFile(URLInfo info){
+    public boolean readRobotsFile(URLInfo info) throws java.net.SocketTimeoutException {
         // Submit GET Req to site to get the Robots.txt file
         try {
 
@@ -316,12 +321,14 @@ public class Crawler implements CrawlMaster {
                 connSec.setRequestProperty("User-Agent", "cis455Crawler");
                 connSec.setRequestProperty("Host", info.getHostName());
                 connSec.setConnectTimeout(1000);
+                connSec.setReadTimeout(1000);
                 is = new BufferedReader(new InputStreamReader(connSec.getInputStream()));
             }
             else {
             		conn = (HttpURLConnection)url.openConnection();
             		conn.setRequestMethod("GET");
-            		conn.setConnectTimeout(1000);
+                    conn.setConnectTimeout(1000);
+                    conn.setReadTimeout(1000);
             		conn.setRequestProperty("User-Agent", "cis455Crawler");
             		conn.setRequestProperty("Host", info.getHostName());
             		
@@ -397,7 +404,12 @@ public class Crawler implements CrawlMaster {
         catch(java.lang.ArrayIndexOutOfBoundsException e1) {
         		info.setNextOperation("HEAD");
                 e1.printStackTrace();
-        		return false;
+        		throw e1;
+        }
+        catch(java.net.SocketTimeoutException e1) {
+            e1.printStackTrace();
+            info.setNextOperation("HEAD");
+            throw e1;
         }
         catch(IOException e) {
             info.setNextOperation("HEAD");
@@ -781,3 +793,4 @@ public class Crawler implements CrawlMaster {
     }
 
 }
+
